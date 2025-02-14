@@ -4,14 +4,18 @@ import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
 export async function middleware(request: NextRequest) {
-  // ログ確認用に Cookie ヘッダーを出力
   console.log("Cookie Header:", request.headers.get("cookie"));
-
-  // Cookie 名を明示的に指定
+  
+  // 環境に応じた Cookie 名を設定する
+  const cookieName =
+    process.env.NODE_ENV === "production"
+      ? "__Secure-authjs.session-token"
+      : "authjs.session-token";
+  
   const token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
-    cookieName: "authjs.session-token",
+    cookieName,
   });
   console.log("Retrieved token:", token);
 
@@ -26,12 +30,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 未ログインの場合、保護対象ページなら /login へリダイレクト
+  // 未ログイン状態で保護対象ページにアクセスした場合は /login へリダイレクト
   if (!token && pathname !== '/login') {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // ログイン済みの場合、/login ページにアクセスしたらホームにリダイレクト
+  // ログイン済み状態で /login ページにアクセスした場合はトップページへリダイレクト
   if (token && pathname === '/login') {
     return NextResponse.redirect(new URL('/', request.url));
   }
