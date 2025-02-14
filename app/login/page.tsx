@@ -1,25 +1,11 @@
 "use client";
 
-import { useSession, signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import {  signIn } from "next-auth/react";
+
 
 export const dynamic = "force-dynamic";
 
 export default function LoginPage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-
-  useEffect(() => {
-    // sessionが存在するかどうかで判断する方法も可能です
-    if (status === "authenticated" && session) {
-      router.push("/");
-    }
-  }, [status, session, router]);
-
-  if (status === "loading") {
-    return <div>Loading...</div>;
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">

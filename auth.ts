@@ -18,6 +18,10 @@ export const config: NextAuthConfig = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!, // 修正
     }),
   ],
+    // ★ここでJWTセッション戦略を指定
+    session: {
+        strategy: 'jwt',
+      },
   callbacks: {
     async signIn({ user, account }) {
       // account が null の場合に備えてチェック
