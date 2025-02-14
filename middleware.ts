@@ -22,10 +22,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // ログイン済み状態で /login ページにアクセスした場合は、トップページ（"/"）へリダイレクト
-  if (token && pathname === '/login') {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
+//   // ログイン済み状態で /login ページにアクセスした場合は、トップページ（"/"）へリダイレクト
+//   if (token && pathname === '/login') {
+//     return NextResponse.redirect(new URL('/', request.url));
+//   }
 
   // その他はそのままリクエストを許可
   return NextResponse.next();
