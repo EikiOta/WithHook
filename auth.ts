@@ -61,6 +61,12 @@ export const config: NextAuthConfig = {
       };
       return session;
     },
+        // 追加: 認証成功後のリダイレクト先を常にトップページ (baseUrl) に設定
+        async redirect({ baseUrl }: { url: string; baseUrl: string }): Promise<string> {
+            return baseUrl;
+          },
+          
+
   },
 };
 
