@@ -2,7 +2,15 @@
 
 import { signIn } from "next-auth/react";
 
+
+
+export const dynamic = "force-dynamic"; // ここで動的レンダリングを強制
+
 export default function LoginPage() {
+
+
+
+    
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
       {/* ヘッダーなど全画面共通にしない場合、ここで簡易ロゴを表示 */}
