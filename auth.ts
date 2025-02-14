@@ -7,7 +7,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export const config: NextAuthConfig = {
-    secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     GithubProvider({
       clientId: process.env.GITHUB_CLIENT_ID!, // 修正
@@ -19,9 +19,14 @@ export const config: NextAuthConfig = {
     }),
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
+      // account が null の場合に備えてチェック
+      if (!account) {
+        console.error("signIn callback: account is null");
+        return false;
+      }
+      const providerAccountId = account.providerAccountId;
       try {
-        const providerAccountId = account.providerAccountId;
         const existingUser = await prisma.user.findUnique({
           where: { user_id: providerAccountId },
         });
