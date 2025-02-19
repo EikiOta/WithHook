@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+// 追加: useRouter をインポート
+import { useRouter } from "next/navigation";
 
 // ▼ 短縮形の品詞マッピング（表示時に [名][動][形][副] のように使う）
 const PART_OF_SPEECH_MAP: { [key: string]: string } = {
@@ -44,6 +46,9 @@ export default function WordSearchPage() {
   const [aggregatedResults, setAggregatedResults] = useState<AggregatedResult[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedPos, setSelectedPos] = useState<string>(""); // 品詞フィルタ用の状態（空文字の場合は全て）
+
+  // 追加: ルーターの取得
+  const router = useRouter();
 
   const RESULTS_PER_PAGE = 10; // 1ページあたりの表示件数
 
@@ -150,7 +155,6 @@ export default function WordSearchPage() {
   };
 
   // ▼ 品詞フィルタの適用
-  // まとめられた品詞配列に対して、選択した品詞が含まれているかをチェック
   const filteredResults = selectedPos
     ? aggregatedResults.filter((item) => item.parts.includes(selectedPos))
     : aggregatedResults;
@@ -223,7 +227,12 @@ export default function WordSearchPage() {
               </tr>
             ) : (
               currentResults.map((item, index) => (
-                <tr key={item.word} className="hover:bg-blue-50">
+                <tr
+                  key={item.word}
+                  /* クリック時に詳細ページへ飛ぶ & ホバー時のカーソルを指マークに */
+                  className="hover:bg-blue-50 cursor-pointer"
+                  onClick={() => router.push(`/words/${item.word}`)}
+                >
                   <td className="border p-2 text-center">
                     {indexOfFirst + index + 1}
                   </td>
