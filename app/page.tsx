@@ -1,4 +1,9 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+
 export default function HomePage() {
+  const router = useRouter();
   return (
     <div className="container mx-auto py-8 px-4">
       <h1 className="text-2xl font-bold mb-6">トップ</h1>
@@ -13,7 +18,9 @@ export default function HomePage() {
             <br />
             My単語帳へ追加ができます
           </p>
-          <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+          <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  onClick={() => router.push("/word-search")}
+          >
             検索する
           </button>
         </div>
