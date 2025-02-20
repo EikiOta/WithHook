@@ -56,6 +56,7 @@ type Props = {
   userId: string;
 };
 
+// ────────────── モーダルベース ──────────────
 function Modal({
   onClose,
   children,
@@ -77,6 +78,7 @@ function Modal({
   );
 }
 
+// ────────────── 意味新規作成フォーム ──────────────
 function MeaningModalForm({
   onClose,
   onCreateMeaning,
@@ -90,6 +92,7 @@ function MeaningModalForm({
   const [isPublic, setIsPublic] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+
   const handleSave = async () => {
     try {
       setErrorMsg("");
@@ -98,9 +101,12 @@ function MeaningModalForm({
       setSuccessMsg("作成しました！");
       setTimeout(() => onClose(), 800);
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message || "DBエラーが発生しました。" : "不明なエラーが発生しました。");
+      setErrorMsg(
+        err instanceof Error ? err.message || "DBエラーが発生しました。" : "不明なエラーが発生しました。"
+      );
     }
   };
+
   return (
     <div>
       <h2 className="text-lg font-bold mb-2">意味を新規作成 (単語: {wordParam})</h2>
@@ -120,16 +126,13 @@ function MeaningModalForm({
           <option value="private">非公開</option>
         </select>
       </div>
-      <button onClick={handleSave} className="px-4 py-2 bg-green-500 text-white rounded mr-2">
-        保存
-      </button>
-      <button onClick={onClose} className="px-4 py-2 bg-gray-300 rounded">
-        キャンセル
-      </button>
+      <button onClick={handleSave} className="px-4 py-2 bg-green-500 text-white rounded mr-2">保存</button>
+      <button onClick={onClose} className="px-4 py-2 bg-gray-300 rounded">キャンセル</button>
     </div>
   );
 }
 
+/** 意味編集フォーム */
 function MeaningEditModalForm({
   onClose,
   onUpdateMeaning,
@@ -145,6 +148,7 @@ function MeaningEditModalForm({
   const [isPublic, setIsPublic] = useState(initialMeaning.is_public);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+
   const handleSave = async () => {
     try {
       setErrorMsg("");
@@ -153,9 +157,12 @@ function MeaningEditModalForm({
       setSuccessMsg("更新しました！");
       setTimeout(() => onClose(), 800);
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message || "DBエラーが発生しました。" : "不明なエラーが発生しました。");
+      setErrorMsg(
+        err instanceof Error ? err.message || "DBエラーが発生しました。" : "不明なエラーが発生しました。"
+      );
     }
   };
+
   return (
     <div>
       <h2 className="text-lg font-bold mb-2">意味を編集 (単語: {wordParam})</h2>
@@ -174,16 +181,13 @@ function MeaningEditModalForm({
           <option value="private">非公開</option>
         </select>
       </div>
-      <button onClick={handleSave} className="px-4 py-2 bg-green-500 text-white rounded mr-2">
-        保存
-      </button>
-      <button onClick={onClose} className="px-4 py-2 bg-gray-300 rounded">
-        キャンセル
-      </button>
+      <button onClick={handleSave} className="px-4 py-2 bg-green-500 text-white rounded mr-2">保存</button>
+      <button onClick={onClose} className="px-4 py-2 bg-gray-300 rounded">キャンセル</button>
     </div>
   );
 }
 
+/** 意味削除モーダル */
 function MeaningDeleteModal({
   onClose,
   onDelete,
@@ -212,6 +216,7 @@ function MeaningDeleteModal({
   );
 }
 
+/** 記憶hook新規作成フォーム */
 function MemoryHookModalForm({
   onClose,
   onCreateHook,
@@ -225,6 +230,7 @@ function MemoryHookModalForm({
   const [isPublic, setIsPublic] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+
   const handleSave = async () => {
     try {
       setErrorMsg("");
@@ -233,9 +239,12 @@ function MemoryHookModalForm({
       setSuccessMsg("作成しました！");
       setTimeout(() => onClose(), 800);
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message || "DBエラーが発生しました。" : "不明なエラーが発生しました。");
+      setErrorMsg(
+        err instanceof Error ? err.message || "DBエラーが発生しました。" : "不明なエラーが発生しました。"
+      );
     }
   };
+
   return (
     <div>
       <h2 className="text-lg font-bold mb-2">記憶hookを新規作成 (単語: {wordParam})</h2>
@@ -265,6 +274,7 @@ function MemoryHookModalForm({
   );
 }
 
+/** 記憶hook編集フォーム */
 function MemoryHookEditModalForm({
   onClose,
   onUpdateHook,
@@ -280,6 +290,7 @@ function MemoryHookEditModalForm({
   const [isPublic, setIsPublic] = useState(initialHook.is_public);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+
   const handleSave = async () => {
     try {
       setErrorMsg("");
@@ -288,9 +299,12 @@ function MemoryHookEditModalForm({
       setSuccessMsg("更新しました！");
       setTimeout(() => onClose(), 800);
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message || "DBエラーが発生しました。" : "不明なエラーが発生しました。");
+      setErrorMsg(
+        err instanceof Error ? err.message || "DBエラーが発生しました。" : "不明なエラーが発生しました。"
+      );
     }
   };
+
   return (
     <div>
       <h2 className="text-lg font-bold mb-2">記憶hookを編集 (単語: {wordParam})</h2>
@@ -319,6 +333,7 @@ function MemoryHookEditModalForm({
   );
 }
 
+/** 記憶hook削除モーダル */
 function MemoryHookDeleteModal({
   onClose,
   onDelete,
@@ -347,22 +362,26 @@ function MemoryHookDeleteModal({
   );
 }
 
+/** 単語設定タブ（選択結果表示・記憶hook解除ボタン付き・デザイン改善）  
+ * wordRecordは未使用のため削除し、wordParamを表示
+ */
 function WordSettingTab({
-  wordRecord,
+  wordParam,
   selectedMeaning,
   selectedMemoryHook,
   onClearMemoryHook,
   onAddToMyWords,
   addMessage,
 }: {
-  wordRecord: Word | null;
+  wordParam: string;
   selectedMeaning: Meaning | null;
   selectedMemoryHook: MemoryHook | null;
   onClearMemoryHook: () => void;
   onAddToMyWords: () => Promise<void>;
   addMessage: string;
 }) {
-  const displayedWord = wordRecord?.word ?? "(未登録)";
+  // 常にURLのwordParamを表示
+  const displayedWord = wordParam;
   return (
     <div className="bg-white shadow-md rounded p-6 mb-6">
       <h2 className="text-2xl font-bold mb-4">単語設定</h2>
@@ -388,10 +407,7 @@ function WordSettingTab({
           <span className="ml-2">なし</span>
         )}
       </div>
-      <button
-        onClick={onAddToMyWords}
-        className="mt-4 px-4 py-2 bg-green-500 text-white rounded"
-      >
+      <button onClick={onAddToMyWords} className="mt-4 px-4 py-2 bg-green-500 text-white rounded">
         My単語帳に追加
       </button>
       {addMessage && <p className="mt-2 text-green-600">{addMessage}</p>}
@@ -402,6 +418,7 @@ function WordSettingTab({
   );
 }
 
+/** 意味一覧タブ */
 function MeaningsTab({
   wordParam,
   meanings,
@@ -500,6 +517,7 @@ function MeaningsTab({
   );
 }
 
+/** 記憶hookタブ */
 function MemoryHooksTab({
   wordParam,
   memoryHooks,
@@ -598,6 +616,7 @@ function MemoryHooksTab({
   );
 }
 
+/** メインタブコンポーネント */
 export default function WordDetailTabs({
   wordParam,
   wordRecord,
@@ -650,6 +669,7 @@ export default function WordDetailTabs({
 
   return (
     <div className="mt-4">
+      {/* タブ切り替え */}
       <div className="flex gap-2 mb-4">
         <button
           className={`px-4 py-2 border rounded ${activeTab === "wordSetting" ? "bg-blue-200" : ""}`}
@@ -670,9 +690,11 @@ export default function WordDetailTabs({
           記憶hook一覧
         </button>
       </div>
+
+      {/* タブ内容 */}
       {activeTab === "wordSetting" && (
         <WordSettingTab
-          wordRecord={wordRecord}
+          wordParam={wordParam}
           selectedMeaning={selectedMeaning}
           selectedMemoryHook={selectedMemoryHook}
           onClearMemoryHook={() => setSelectedMemoryHook(null)}
@@ -706,6 +728,8 @@ export default function WordDetailTabs({
           selectedMemoryHook={selectedMemoryHook}
         />
       )}
+
+      {/* 意味 編集モーダル */}
       {editingMeaning && (
         <Modal onClose={() => setEditingMeaning(null)}>
           <MeaningEditModalForm
@@ -721,6 +745,8 @@ export default function WordDetailTabs({
           />
         </Modal>
       )}
+
+      {/* 意味 削除モーダル */}
       {deletingMeaning && (
         <Modal onClose={() => setDeletingMeaning(null)}>
           <MeaningDeleteModal
@@ -735,6 +761,8 @@ export default function WordDetailTabs({
           />
         </Modal>
       )}
+
+      {/* 記憶hook 編集モーダル */}
       {editingMemoryHook && (
         <Modal onClose={() => setEditingMemoryHook(null)}>
           <MemoryHookEditModalForm
@@ -750,6 +778,8 @@ export default function WordDetailTabs({
           />
         </Modal>
       )}
+
+      {/* 記憶hook 削除モーダル */}
       {deletingMemoryHook && (
         <Modal onClose={() => setDeletingMemoryHook(null)}>
           <MemoryHookDeleteModal

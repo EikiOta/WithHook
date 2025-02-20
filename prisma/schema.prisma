@@ -10,17 +10,16 @@ generator client {
 }
 
 model User {
-  user_id       String        @id @default(cuid())
-  nickname      String?
-  profile_image String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  user_id           String    @id @default(cuid())
+  providerAccountId String?   @unique
+  nickname          String?
+  profile_image     String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  // 既存リレーション
+  // 既存のリレーション
   meanings     Meaning[]
   memoryHooks  MemoryHook[]
-  
-  // 新規: UserWord とのリレーション（1:N）
   userWords    UserWord[]
 
   @@map("users")
@@ -35,9 +34,7 @@ model Word {
 
   meanings     Meaning[]
   memory_hooks MemoryHook[]
-  
-  // 新規: UserWord とのリレーション（1:N）
-  userWords   UserWord[]
+  userWords    UserWord[]
 
   @@map("words")
 }
@@ -53,10 +50,8 @@ model Meaning {
   updated_at DateTime @updatedAt
 
   // リレーション
-  word  Word @relation(fields: [word_id], references: [word_id])
-  user  User @relation(fields: [user_id], references: [user_id])
-  
-  // 新規: UserWord とのリレーション（逆方向）
+  word      Word @relation(fields: [word_id], references: [word_id])
+  user      User @relation(fields: [user_id], references: [user_id])
   userWords UserWord[]
 
   @@map("meanings")
@@ -73,18 +68,13 @@ model MemoryHook {
   updated_at     DateTime @updatedAt
 
   // リレーション
-  word  Word @relation(fields: [word_id], references: [word_id])
-  user  User @relation(fields: [user_id], references: [user_id])
-
-  // 新規: UserWord とのリレーション（逆方向）
+  word      Word @relation(fields: [word_id], references: [word_id])
+  user      User @relation(fields: [user_id], references: [user_id])
   userWords UserWord[]
 
   @@map("memory_hooks")
 }
 
-// ──────────────────────────────────────────────────────────
-// 新規追加: My単語帳テーブル (UserWord) を表すモデル
-// ──────────────────────────────────────────────────────────
 model UserWord {
   user_words_id  Int         @id @default(autoincrement())
   user_id        String

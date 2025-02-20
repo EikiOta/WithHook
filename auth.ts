@@ -1,13 +1,13 @@
-// auth.ts Auth.jsの設定と初期化を行う
-import { NextAuthConfig } from "next-auth";
+// auth.ts
+import NextAuth from "next-auth";
 import GithubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
-import NextAuth from "next-auth";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-export const config: NextAuthConfig = {
+export const { auth, handlers, signIn, signOut } = NextAuth({
+  // Auth.js v5では環境変数に AUTH_ プレフィックスを利用するのが推奨されます
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
     GithubProvider({
@@ -19,42 +19,44 @@ export const config: NextAuthConfig = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
-  // JWT セッション戦略を利用
   session: {
     strategy: "jwt",
   },
   callbacks: {
-    /*singInはユーザがサインイン直後に呼び出す*/ 
     async signIn({ user, account }) {
-      // アカウントがnullの場合
       if (!account) {
         console.error("signIn callback: account is null");
         return false;
       }
+      // プロバイダから提供される固有ID
       const providerAccountId = account.providerAccountId;
       try {
-        /* Prismaの"findUnique"メソッドを使って、userテーブルから一意に識別できるユーザを探す */
+        // providerAccountId でユーザー検索（既存ユーザーがあれば取得）
         const existingUser = await prisma.user.findUnique({
-          where: { user_id: providerAccountId }, // user_idがOAuthから受け取ったproviderAccountIdと一致するレコードを検索対象にする
+          where: { providerAccountId: providerAccountId },
         });
         if (!existingUser) {
-          // 存在しない場合createする
-          await prisma.user.create({
+          // 存在しなければ、新規ユーザー作成
+          const newUser = await prisma.user.create({
             data: {
-              user_id: providerAccountId,
+              providerAccountId: providerAccountId,
               nickname: user.name || "",
               profile_image: user.image || "",
             },
           });
+          // 作成したレコードの内部ID（user_id）を user オブジェクトにセット
+          user.id = newUser.user_id;
         } else {
-          // 存在する場合アップデートする
+          // 既存ユーザーがあれば、必要に応じて情報を更新
           await prisma.user.update({
-            where: { user_id: providerAccountId },
+            where: { providerAccountId: providerAccountId },
             data: {
               nickname: user.name || "",
               profile_image: user.image || "",
             },
           });
+          // 既存レコードの user_id をセット
+          user.id = existingUser.user_id;
         }
         return true;
       } catch (error) {
@@ -62,33 +64,32 @@ export const config: NextAuthConfig = {
         return false;
       }
     },
-    // JWT コールバックを明示的に実装
-    async jwt({ token, user }) {
-      token = token || {};
+    async jwt({ token, user, account }) {
       if (user) {
-        // user.id が存在しない場合、user.email を代替として利用
-        token.sub = user.id ? user.id.toString() : user.email || token.sub || "";
+        // signIn時に user.id に DB の user_id がセットされるのでそれを使用
+        token.sub = user.id ? user.id.toString() : token.sub;
         token.name = user.name || "";
         token.email = user.email || "";
         token.picture = user.image || "";
       }
-      return token;// 更新されたトークンを返す
+      // もし account 情報があれば、providerAccountId を念のため上書き
+      if (account && account.providerAccountId) {
+        token.sub = account.providerAccountId;
+      }
+      return token;
     },
     async session({ session, token }) {
-        session.user = {
-          ...session.user,
-          id: token.sub ?? "",
-          name: token.name ?? "",
-          email: token.email ?? "",
-          image: token.picture ?? "",
-        };
-        return session;
-      },
-      /*リダイレクト処理 baseUrlはAuth.jsが用意しているもの。既定ではホームページ（"/"）にリダイレクトされる*/
-    async redirect({ baseUrl }: { url: string; baseUrl: string }): Promise<string> {
+      session.user = {
+        ...session.user,
+        id: token.sub ?? "",
+        name: token.name ?? "",
+        email: token.email ?? "",
+        image: token.picture ?? "",
+      };
+      return session;
+    },
+    async redirect({ baseUrl }) {
       return baseUrl;
     },
   },
-};
-
-export const { handlers, auth, signIn, signOut } = NextAuth(config);
+});
