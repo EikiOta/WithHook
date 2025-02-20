@@ -1,6 +1,8 @@
-import { prisma } from "@/lib/prisma"; 
-import MyWordsTable from "./MyWordsTable"; // クライアントコンポーネント
+import {  PrismaClient } from "@prisma/client";
+
 import { auth } from "@/auth";
+import MyWordsTable from "./MyWordsTable";
+const prisma = new PrismaClient();
 
 export default async function MyWordsPage() {
   // 1. ログイン中のユーザを取得
@@ -21,7 +23,6 @@ export default async function MyWordsPage() {
     include: {
       word: {
         include: {
-          // ここで "meanings" のうち user_id が自分 & is_deleted=false を1件だけ取得
           meanings: {
             where: {
               user_id: userId,
@@ -31,23 +32,22 @@ export default async function MyWordsPage() {
           },
         },
       },
-      memoryHook: true, // memoryHook があれば取得
+      memoryHook: true,
     },
   });
 
   // 3. クライアント側で扱いやすい形に整形
-  //    例: MyWordsTable が受け取る { id, word, meaning, memoryHook } の形にする
+  //    MyWordsTable が受け取る { id, word, meaning, memoryHook } の形にする
   const data = userWords.map((uw) => ({
     id: uw.user_words_id,
-    word: uw.word.word, // Wordモデルの英単語
-    meaning: uw.word.meanings?.[0]?.meaning ?? "", // 先頭1件のmeaningを表示
-    memoryHook: uw.memoryHook?.memory_hook ?? "",   // userWord.memoryHook があれば表示
+    word: uw.word.word,
+    meaning: uw.word.meanings?.[0]?.meaning ?? "",
+    memoryHook: uw.memoryHook?.memory_hook ?? "",
   }));
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">My単語帳</h1>
-      {/* 4. クライアントコンポーネントへデータを渡す */}
       <MyWordsTable initialData={data} />
     </div>
   );

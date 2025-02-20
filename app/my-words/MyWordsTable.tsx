@@ -1,7 +1,7 @@
-// app/my-words/MyWordsTable.tsx
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 // テーブル表示用の型定義
 type MyWordItem = {
@@ -16,7 +16,7 @@ export default function MyWordsTable({
 }: {
   initialData: MyWordItem[];
 }) {
-  // setData が使われていないので、分割代入から setData を削除
+  const router = useRouter();
   const [data] = useState<MyWordItem[]>(initialData);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -28,6 +28,11 @@ export default function MyWordsTable({
 
   const handlePrev = () => setCurrentPage((p) => Math.max(p - 1, 1));
   const handleNext = () => setCurrentPage((p) => Math.min(p + 1, totalPages));
+
+  // 編集ボタン押下時は、対象の英単語詳細ページへ遷移
+  const handleEdit = (word: string) => {
+    router.push(`/words/${word}`);
+  };
 
   return (
     <div className="bg-white shadow-md rounded p-4 overflow-x-auto">
@@ -58,7 +63,10 @@ export default function MyWordsTable({
                 <td className="border p-2">{item.meaning}</td>
                 <td className="border p-2">{item.memoryHook}</td>
                 <td className="border p-2 text-center">
-                  <button className="px-2 py-1 bg-yellow-300 rounded mr-2">
+                  <button
+                    onClick={() => handleEdit(item.word)}
+                    className="px-2 py-1 bg-yellow-300 rounded mr-2"
+                  >
                     編集
                   </button>
                   <button className="px-2 py-1 bg-red-300 rounded">
