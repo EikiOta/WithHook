@@ -1,3 +1,4 @@
+// app/my-words/MyWordsTable.tsx
 "use client";
 
 import { useState } from "react";
@@ -15,7 +16,8 @@ export default function MyWordsTable({
 }: {
   initialData: MyWordItem[];
 }) {
-  const [data, setData] = useState<MyWordItem[]>(initialData);
+  // setData が使われていないので、分割代入から setData を削除
+  const [data] = useState<MyWordItem[]>(initialData);
   const [currentPage, setCurrentPage] = useState(1);
 
   const itemsPerPage = 5;
@@ -59,7 +61,9 @@ export default function MyWordsTable({
                   <button className="px-2 py-1 bg-yellow-300 rounded mr-2">
                     編集
                   </button>
-                  <button className="px-2 py-1 bg-red-300 rounded">削除</button>
+                  <button className="px-2 py-1 bg-red-300 rounded">
+                    削除
+                  </button>
                 </td>
               </tr>
             ))
