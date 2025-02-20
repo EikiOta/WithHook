@@ -1,6 +1,5 @@
-// app/word/page.tsx
 import { Prisma, PrismaClient } from "@prisma/client";
-import type { Meaning, MemoryHook, Word } from "@prisma/client";
+import type { Meaning, MemoryHook, Word, UserWord } from "@prisma/client";
 import WordDetailTabs from "./WordDetailTabs";
 import { auth } from "@/auth";
 
@@ -11,20 +10,20 @@ export default async function WordDetailPage({
 }: {
   params: Promise<{ word: string }>;
 }) {
+  // ユーザー認証
   const session = await auth();
   if (!session || !session.user || !session.user.id) {
     return <p>エラー：ユーザー情報を取得できません。ログインしてください。</p>;
   }
   const userId = session.user.id;
 
-  // ユーザの存在を保証（ここで一度だけ作成 or 取得）
+  // ユーザー存在を保証（1回だけ作成 or 取得）
   let userRec = await prisma.user.findUnique({ where: { user_id: userId } });
   if (!userRec) {
-    // nickname や profile_image は、OAuth の情報から設定するのが望ましい
     userRec = await prisma.user.create({
       data: {
         user_id: userId,
-        nickname: session.user.name || "", // session.user.name を入れる等
+        nickname: session.user.name || "",
         profile_image: session.user.image || "",
       },
     });
@@ -32,7 +31,7 @@ export default async function WordDetailPage({
 
   const { word: wordParam } = await params;
 
-  // 該当英単語のレコードを検索
+  // 単語レコードを検索（存在しなければ null）
   const wordRecord = await prisma.word.findUnique({
     where: { word: wordParam },
   });
@@ -41,7 +40,6 @@ export default async function WordDetailPage({
   let memoryHooks: MemoryHook[] = [];
 
   if (wordRecord) {
-    // 意味一覧
     meanings = await prisma.meaning.findMany({
       where: {
         word_id: wordRecord.word_id,
@@ -51,7 +49,6 @@ export default async function WordDetailPage({
       orderBy: { meaning_id: "asc" },
     });
 
-    // 記憶hook一覧
     memoryHooks = await prisma.memoryHook.findMany({
       where: {
         word_id: wordRecord.word_id,
@@ -62,9 +59,61 @@ export default async function WordDetailPage({
     });
   }
 
-  // --- サーバーアクション ---
+  // My単語帳(user_words)に既に登録されているか確認
+  let myWordRecord: UserWord | null = null;
+  if (wordRecord) {
+    myWordRecord = await prisma.userWord.findFirst({
+      where: {
+        user_id: userId,
+        word_id: wordRecord.word_id,
+        is_deleted: false,
+      },
+    });
+  }
 
-  // 意味 新規作成
+  /**
+   * saveToMyWordsAction: 既存なら更新、なければ新規作成
+   * ※引数は (meaning_id, memory_hook_id) の2つ
+   *     wordParam は外側スコープの変数を使用
+   */
+  async function saveToMyWordsAction(
+    meaning_id: number,
+    memory_hook_id: number | null
+  ): Promise<void> {
+    "use server";
+    const foundWord = await prisma.word.findUnique({
+      where: { word: wordParam },
+    });
+    if (!foundWord) {
+      throw new Error("単語レコードが存在しません。意味を先に登録してください。");
+    }
+
+    const existingUserWord = await prisma.userWord.findFirst({
+      where: {
+        user_id: userId,
+        word_id: foundWord.word_id,
+        is_deleted: false,
+      },
+    });
+
+    if (existingUserWord) {
+      await prisma.userWord.update({
+        where: { user_words_id: existingUserWord.user_words_id },
+        data: { meaning_id, memory_hook_id },
+      });
+    } else {
+      await prisma.userWord.create({
+        data: {
+          user_id: userId,
+          word_id: foundWord.word_id,
+          meaning_id,
+          memory_hook_id,
+        } as Prisma.UserWordUncheckedCreateInput,
+      });
+    }
+  }
+
+  // createMeaningAction
   async function createMeaningAction(
     wordInput: string,
     meaningText: string,
@@ -72,12 +121,6 @@ export default async function WordDetailPage({
     userId: string
   ): Promise<{ newMeaning: Meaning; wordRec: Word }> {
     "use server";
-    // ここで user を再作成しない（削除）
-    // let userRec = await prisma.user.findUnique({ where: { user_id: userId } });
-    // if (!userRec) {
-    //   userRec = await prisma.user.create({ ... });
-    // }
-
     let wordRec = await prisma.word.findUnique({ where: { word: wordInput } });
     if (!wordRec) {
       wordRec = await prisma.word.create({ data: { word: wordInput } });
@@ -99,7 +142,7 @@ export default async function WordDetailPage({
     return { newMeaning, wordRec };
   }
 
-  // 記憶hook 新規作成
+  // createMemoryHookAction
   async function createMemoryHookAction(
     wordInput: string,
     hookText: string,
@@ -107,7 +150,6 @@ export default async function WordDetailPage({
     userId: string
   ): Promise<{ newMemoryHook: MemoryHook; wordRec: Word }> {
     "use server";
-    // 同様にここで user を再作成しない
     let wordRec = await prisma.word.findUnique({ where: { word: wordInput } });
     if (!wordRec) {
       wordRec = await prisma.word.create({ data: { word: wordInput } });
@@ -123,7 +165,7 @@ export default async function WordDetailPage({
     return { newMemoryHook, wordRec };
   }
 
-  // 意味 更新
+  // updateMeaningAction
   async function updateMeaningAction(
     meaningId: number,
     meaningText: string,
@@ -136,7 +178,7 @@ export default async function WordDetailPage({
     });
   }
 
-  // 記憶hook 更新
+  // updateMemoryHookAction
   async function updateMemoryHookAction(
     memoryHookId: number,
     hookText: string,
@@ -149,7 +191,7 @@ export default async function WordDetailPage({
     });
   }
 
-  // 意味 削除
+  // deleteMeaningAction
   async function deleteMeaningAction(meaningId: number): Promise<Meaning> {
     "use server";
     return prisma.meaning.update({
@@ -158,7 +200,7 @@ export default async function WordDetailPage({
     });
   }
 
-  // 記憶hook 削除
+  // deleteMemoryHookAction
   async function deleteMemoryHookAction(memoryHookId: number): Promise<MemoryHook> {
     "use server";
     return prisma.memoryHook.update({
@@ -167,23 +209,20 @@ export default async function WordDetailPage({
     });
   }
 
-  // My単語帳に追加
-  async function addToMyWordsAction(
-    word_id: number,
-    meaning_id: number,
-    memory_hook_id: number | null
-  ): Promise<void> {
-    "use server";
-    // ここでも user を再作成しない
-    await prisma.userWord.create({
-      data: {
-        user_id: userId,
-        word_id,
-        meaning_id,
-        memory_hook_id,
-      } as Prisma.UserWordUncheckedCreateInput,
-    });
-  }
+  // 初期選択状態
+  const initialSelectedMeaning =
+    myWordRecord && meanings.length > 0
+      ? meanings.find((m) => m.meaning_id === myWordRecord.meaning_id) || meanings[0]
+      : meanings.length > 0
+      ? meanings[0]
+      : null;
+
+  const initialSelectedMemoryHook =
+    myWordRecord && myWordRecord.memory_hook_id && memoryHooks.length > 0
+      ? memoryHooks.find((h) => h.memory_hook_id === myWordRecord.memory_hook_id) || null
+      : null;
+
+  const isMyWordSaved = Boolean(myWordRecord);
 
   return (
     <div className="p-4">
@@ -199,7 +238,10 @@ export default async function WordDetailPage({
         updateMemoryHook={updateMemoryHookAction}
         deleteMeaning={deleteMeaningAction}
         deleteMemoryHook={deleteMemoryHookAction}
-        addToMyWords={addToMyWordsAction}
+        saveToMyWords={saveToMyWordsAction}
+        isMyWordSaved={isMyWordSaved}
+        initialSelectedMeaning={initialSelectedMeaning}
+        initialSelectedMemoryHook={initialSelectedMemoryHook}
         userId={userId}
       />
       {!wordRecord && <p>「{wordParam}」はまだ登録されていません。</p>}
