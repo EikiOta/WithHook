@@ -18,12 +18,8 @@ function sortOwnFirst<T extends { user_id: string }>(
   });
 }
 
-// ─────────────────────────────────────────────────────
-// Props 型定義：サーバーアクションをすべて受け取る前提
-// ─────────────────────────────────────────────────────
 type Props = {
   wordParam: string;
-  wordRecord: Word | null;
   initialMeanings: Meaning[];
   initialMemoryHooks: MemoryHook[];
   createMeaning: (
@@ -60,9 +56,7 @@ type Props = {
   userId: string;
 };
 
-// ─────────────────────────────────────────────────────
 // 削除確認用モーダル
-// ─────────────────────────────────────────────────────
 function ConfirmModal({
   message,
   onConfirm,
@@ -99,12 +93,8 @@ function ConfirmModal({
   );
 }
 
-// ─────────────────────────────────────────────────────
-// メインコンポーネント
-// ─────────────────────────────────────────────────────
 export default function WordDetailTabs({
   wordParam,
-  wordRecord,
   initialMeanings,
   initialMemoryHooks,
   createMeaning,
@@ -123,7 +113,6 @@ export default function WordDetailTabs({
     "wordSetting"
   );
 
-  // 単語の意味一覧・記憶hook一覧
   const [meanings, setMeanings] = useState<Meaning[]>(() =>
     sortOwnFirst(initialMeanings, userId, "meaning_id")
   );
@@ -131,7 +120,6 @@ export default function WordDetailTabs({
     sortOwnFirst(initialMemoryHooks, userId, "memory_hook_id")
   );
 
-  // 初期選択状態
   const [selectedMeaning, setSelectedMeaning] = useState<Meaning | null>(
     initialSelectedMeaning
   );
@@ -139,27 +127,17 @@ export default function WordDetailTabs({
     initialSelectedMemoryHook
   );
 
-  // 新規作成／編集／削除モーダルのフラグ
   const [showCreateMeaningModal, setShowCreateMeaningModal] = useState(false);
   const [showCreateMemoryHookModal, setShowCreateMemoryHookModal] = useState(false);
   const [editMeaning, setEditMeaning] = useState<Meaning | null>(null);
   const [editMemoryHook, setEditMemoryHook] = useState<MemoryHook | null>(null);
   const [deleteMeaningTarget, setDeleteMeaningTarget] = useState<Meaning | null>(null);
-  const [deleteMemoryHookTarget, setDeleteMemoryHookTarget] = useState<MemoryHook | null>(
-    null
-  );
+  const [deleteMemoryHookTarget, setDeleteMemoryHookTarget] = useState<MemoryHook | null>(null);
 
-  // My単語帳に追加した際のメッセージ
   const [addMessage, setAddMessage] = useState("");
 
   // 「My単語帳に追加」ボタン押下
   const handleSaveToMyWords = async () => {
-    // wordRecord が null でもサーバーアクション側で再検索するケースはあるが、
-    // ここでは念のためチェック
-    if (!wordRecord) {
-      alert("単語レコードが存在しません。意味を登録してください。");
-      return;
-    }
     if (!selectedMeaning) return;
     try {
       await saveToMyWords(
@@ -179,25 +157,19 @@ export default function WordDetailTabs({
       {/* タブ切り替え */}
       <div className="flex gap-2 mb-4">
         <button
-          className={`px-4 py-2 border rounded ${
-            activeTab === "wordSetting" ? "bg-blue-200" : ""
-          }`}
+          className={`px-4 py-2 border rounded ${activeTab === "wordSetting" ? "bg-blue-200" : ""}`}
           onClick={() => setActiveTab("wordSetting")}
         >
           単語設定
         </button>
         <button
-          className={`px-4 py-2 border rounded ${
-            activeTab === "meanings" ? "bg-blue-200" : ""
-          }`}
+          className={`px-4 py-2 border rounded ${activeTab === "meanings" ? "bg-blue-200" : ""}`}
           onClick={() => setActiveTab("meanings")}
         >
           意味一覧
         </button>
         <button
-          className={`px-4 py-2 border rounded ${
-            activeTab === "memoryHooks" ? "bg-blue-200" : ""
-          }`}
+          className={`px-4 py-2 border rounded ${activeTab === "memoryHooks" ? "bg-blue-200" : ""}`}
           onClick={() => setActiveTab("memoryHooks")}
         >
           記憶hook一覧
@@ -235,12 +207,7 @@ export default function WordDetailTabs({
               placeholder="意味を入力"
               initialIsPublic={true}
               onSave={async (text, isPublic) => {
-                const { newMeaning } = await createMeaning(
-                  wordParam,
-                  text,
-                  isPublic,
-                  userId
-                );
+                const { newMeaning } = await createMeaning(wordParam, text, isPublic, userId);
                 setMeanings((prev) =>
                   sortOwnFirst([...prev, newMeaning], userId, "meaning_id")
                 );
@@ -266,9 +233,7 @@ export default function WordDetailTabs({
                 return (
                   <tr
                     key={m.meaning_id}
-                    className={`cursor-pointer ${
-                      isSelected ? "bg-blue-100" : "hover:bg-gray-50"
-                    }`}
+                    className={`cursor-pointer ${isSelected ? "bg-blue-100" : "hover:bg-gray-50"}`}
                     onClick={() => setSelectedMeaning(m)}
                   >
                     <td className="border p-2 text-center">{idx + 1}</td>
@@ -276,24 +241,13 @@ export default function WordDetailTabs({
                       {m.meaning}
                       {m.user_id === userId && <span className="text-red-500 ml-1">★</span>}
                     </td>
-                    <td className="border p-2 text-center">
-                      {m.is_public ? "公開" : "非公開"}
-                    </td>
-                    <td
-                      className="border p-2 text-center"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        className="px-2 py-1 bg-yellow-300 rounded"
-                        onClick={() => setEditMeaning(m)}
-                      >
+                    <td className="border p-2 text-center">{m.is_public ? "公開" : "非公開"}</td>
+                    <td className="border p-2 text-center" onClick={(e) => e.stopPropagation()}>
+                      <button className="px-2 py-1 bg-yellow-300 rounded" onClick={() => setEditMeaning(m)}>
                         編集
                       </button>
                     </td>
-                    <td
-                      className="border p-2 text-center"
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                    <td className="border p-2 text-center" onClick={(e) => e.stopPropagation()}>
                       <button
                         className="px-2 py-1 bg-red-300 rounded"
                         onClick={() => {
@@ -332,12 +286,7 @@ export default function WordDetailTabs({
               placeholder="記憶hookを入力"
               initialIsPublic={true}
               onSave={async (text, isPublic) => {
-                const { newMemoryHook } = await createMemoryHook(
-                  wordParam,
-                  text,
-                  isPublic,
-                  userId
-                );
+                const { newMemoryHook } = await createMemoryHook(wordParam, text, isPublic, userId);
                 setMemoryHooks((prev) =>
                   sortOwnFirst([...prev, newMemoryHook], userId, "memory_hook_id")
                 );
@@ -363,9 +312,7 @@ export default function WordDetailTabs({
                 return (
                   <tr
                     key={h.memory_hook_id}
-                    className={`cursor-pointer ${
-                      isSelected ? "bg-blue-100" : "hover:bg-gray-50"
-                    }`}
+                    className={`cursor-pointer ${isSelected ? "bg-blue-100" : "hover:bg-gray-50"}`}
                     onClick={() => setSelectedMemoryHook(h)}
                   >
                     <td className="border p-2 text-center">{idx + 1}</td>
@@ -373,31 +320,18 @@ export default function WordDetailTabs({
                       {h.memory_hook}
                       {h.user_id === userId && <span className="text-red-500 ml-1">★</span>}
                     </td>
-                    <td className="border p-2 text-center">
-                      {h.is_public ? "公開" : "非公開"}
-                    </td>
-                    <td
-                      className="border p-2 text-center"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        className="px-2 py-1 bg-yellow-300 rounded"
-                        onClick={() => setEditMemoryHook(h)}
-                      >
+                    <td className="border p-2 text-center">{h.is_public ? "公開" : "非公開"}</td>
+                    <td className="border p-2 text-center" onClick={(e) => e.stopPropagation()}>
+                      <button className="px-2 py-1 bg-yellow-300 rounded" onClick={() => setEditMemoryHook(h)}>
                         編集
                       </button>
                     </td>
-                    <td
-                      className="border p-2 text-center"
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                    <td className="border p-2 text-center" onClick={(e) => e.stopPropagation()}>
                       <button
                         className="px-2 py-1 bg-red-300 rounded"
                         onClick={() => {
                           setDeleteMemoryHookTarget(h);
-                          if (
-                            selectedMemoryHook?.memory_hook_id === h.memory_hook_id
-                          ) {
+                          if (selectedMemoryHook?.memory_hook_id === h.memory_hook_id) {
                             setSelectedMemoryHook(null);
                           }
                         }}
@@ -450,11 +384,7 @@ export default function WordDetailTabs({
           placeholder="記憶hookを入力"
           initialIsPublic={editMemoryHook.is_public}
           onSave={async (text, isPublic) => {
-            const updated = await updateMemoryHook(
-              editMemoryHook.memory_hook_id,
-              text,
-              isPublic
-            );
+            const updated = await updateMemoryHook(editMemoryHook.memory_hook_id, text, isPublic);
             setMemoryHooks((prev) =>
               prev.map((h) => (h.memory_hook_id === updated.memory_hook_id ? updated : h))
             );

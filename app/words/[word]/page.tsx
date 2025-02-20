@@ -17,7 +17,7 @@ export default async function WordDetailPage({
   }
   const userId = session.user.id;
 
-  // ユーザー存在を保証（1回だけ作成 or 取得）
+  // ユーザー存在を保証（存在しなければ作成）
   let userRec = await prisma.user.findUnique({ where: { user_id: userId } });
   if (!userRec) {
     userRec = await prisma.user.create({
@@ -31,7 +31,7 @@ export default async function WordDetailPage({
 
   const { word: wordParam } = await params;
 
-  // 単語レコードを検索（存在しなければ null）
+  // SSR時は単語レコードを検索（存在しなければ null）
   const wordRecord = await prisma.word.findUnique({
     where: { word: wordParam },
   });
@@ -59,7 +59,7 @@ export default async function WordDetailPage({
     });
   }
 
-  // My単語帳(user_words)に既に登録されているか確認
+  // My単語帳(user_words)への登録済みレコードを取得（あれば）
   let myWordRecord: UserWord | null = null;
   if (wordRecord) {
     myWordRecord = await prisma.userWord.findFirst({
@@ -72,21 +72,20 @@ export default async function WordDetailPage({
   }
 
   /**
-   * saveToMyWordsAction: 既存なら更新、なければ新規作成
-   * ※引数は (meaning_id, memory_hook_id) の2つ
-   *     wordParam は外側スコープの変数を使用
+   * saveToMyWordsAction:
+   * 既存なら更新、なければ新規作成するサーバーアクション
+   * ※wordParam は外側スコープの変数を使用し、upsert によって単語レコードを必ず取得／作成する
    */
   async function saveToMyWordsAction(
     meaning_id: number,
     memory_hook_id: number | null
   ): Promise<void> {
     "use server";
-    const foundWord = await prisma.word.findUnique({
+    const foundWord = await prisma.word.upsert({
       where: { word: wordParam },
+      update: {},
+      create: { word: wordParam },
     });
-    if (!foundWord) {
-      throw new Error("単語レコードが存在しません。意味を先に登録してください。");
-    }
 
     const existingUserWord = await prisma.userWord.findFirst({
       where: {
@@ -113,7 +112,7 @@ export default async function WordDetailPage({
     }
   }
 
-  // createMeaningAction
+  // createMeaningAction: 単語が存在しなければ作成し、意味を登録する
   async function createMeaningAction(
     wordInput: string,
     meaningText: string,
@@ -209,7 +208,6 @@ export default async function WordDetailPage({
     });
   }
 
-  // 初期選択状態
   const initialSelectedMeaning =
     myWordRecord && meanings.length > 0
       ? meanings.find((m) => m.meaning_id === myWordRecord.meaning_id) || meanings[0]
@@ -229,7 +227,6 @@ export default async function WordDetailPage({
       <h1 className="text-xl font-bold mb-4">単語詳細ページ</h1>
       <WordDetailTabs
         wordParam={wordParam}
-        wordRecord={wordRecord}
         initialMeanings={meanings}
         initialMemoryHooks={memoryHooks}
         createMeaning={createMeaningAction}
