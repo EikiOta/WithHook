@@ -1,24 +1,31 @@
+// [word]/page.tsx
 import { PrismaClient } from "@prisma/client";
 import type { Meaning, MemoryHook, Word } from "@prisma/client";
 import WordDetailTabs from "./WordDetailTabs";
+import { auth } from "@/auth";
 
 const prisma = new PrismaClient();
-const DUMMY_USER_ID = "dummy-user";
 
 export default async function WordDetailPage({
   params,
 }: {
   params: Promise<{ word: string }>;
 }) {
-  const { word: wordParam } = await params;
+  const session = await auth();
+  if (!session || !session.user || !session.user.id) {
+    return <p>エラー：ユーザー情報を取得できません。ログインしてください。</p>;
+  }
+  const userId = session.user.id;
 
-  // ※ ログインユーザ（ここではダミー）の存在を保証する
-  let userRec = await prisma.user.findUnique({ where: { user_id: DUMMY_USER_ID } });
+  // ユーザの存在を保証
+  let userRec = await prisma.user.findUnique({ where: { user_id: userId } });
   if (!userRec) {
     userRec = await prisma.user.create({
-      data: { user_id: DUMMY_USER_ID, nickname: "Dummy User", profile_image: "" },
+      data: { user_id: userId, nickname: "Dummy User", profile_image: "" },
     });
   }
+
+  const { word: wordParam } = await params;
 
   // 該当英単語のレコードを検索
   const wordRecord = await prisma.word.findUnique({
@@ -29,23 +36,30 @@ export default async function WordDetailPage({
   let memoryHooks: MemoryHook[] = [];
 
   if (wordRecord) {
+    // 意味一覧: 「自分が作成した」or「他ユーザだが公開」かつ is_deleted=false
     meanings = await prisma.meaning.findMany({
       where: {
         word_id: wordRecord.word_id,
-        OR: [{ user_id: DUMMY_USER_ID }, { is_public: true }],
+        is_deleted: false,
+        OR: [{ user_id: userId }, { is_public: true }],
       },
       orderBy: { meaning_id: "asc" },
     });
+
+    // 記憶hook一覧: 「自分が作成した」or「他ユーザだが公開」かつ is_deleted=false
     memoryHooks = await prisma.memoryHook.findMany({
       where: {
         word_id: wordRecord.word_id,
-        OR: [{ user_id: DUMMY_USER_ID }, { is_public: true }],
+        is_deleted: false,
+        OR: [{ user_id: userId }, { is_public: true }],
       },
       orderBy: { memory_hook_id: "asc" },
     });
   }
 
-  // サーバーアクション: 意味新規作成
+  // --- サーバーアクション ---
+
+  // 意味 新規作成
   async function createMeaningAction(
     wordInput: string,
     meaningText: string,
@@ -53,30 +67,22 @@ export default async function WordDetailPage({
     userId: string
   ): Promise<{ newMeaning: Meaning; wordRec: Word }> {
     "use server";
-
-    // ユーザの存在を保証
     let userRec = await prisma.user.findUnique({ where: { user_id: userId } });
     if (!userRec) {
       userRec = await prisma.user.create({
         data: { user_id: userId, nickname: "Dummy User", profile_image: "" },
       });
     }
-
-    // 該当単語が存在しなければ作成
     let wordRec = await prisma.word.findUnique({ where: { word: wordInput } });
     if (!wordRec) {
       wordRec = await prisma.word.create({ data: { word: wordInput } });
     }
-
-    // 1ユーザ1意味の制約チェック
     const existing = await prisma.meaning.findFirst({
       where: { word_id: wordRec.word_id, user_id: userId, is_deleted: false },
     });
     if (existing) {
       throw new Error("既にあなたはこの単語の意味を登録済みです。");
     }
-
-    // 新規意味作成
     const newMeaning = await prisma.meaning.create({
       data: {
         word_id: wordRec.word_id,
@@ -85,11 +91,10 @@ export default async function WordDetailPage({
         is_public: isPublic,
       },
     });
-
     return { newMeaning, wordRec };
   }
 
-  // サーバーアクション: 記憶hook新規作成
+  // 記憶hook 新規作成
   async function createMemoryHookAction(
     wordInput: string,
     hookText: string,
@@ -97,21 +102,16 @@ export default async function WordDetailPage({
     userId: string
   ): Promise<{ newMemoryHook: MemoryHook; wordRec: Word }> {
     "use server";
-
-    // ユーザの存在を保証
     let userRec = await prisma.user.findUnique({ where: { user_id: userId } });
     if (!userRec) {
       userRec = await prisma.user.create({
         data: { user_id: userId, nickname: "Dummy User", profile_image: "" },
       });
     }
-
-    // 該当単語が存在しなければ作成
     let wordRec = await prisma.word.findUnique({ where: { word: wordInput } });
     if (!wordRec) {
       wordRec = await prisma.word.create({ data: { word: wordInput } });
     }
-
     const newMemoryHook = await prisma.memoryHook.create({
       data: {
         word_id: wordRec.word_id,
@@ -120,8 +120,51 @@ export default async function WordDetailPage({
         is_public: isPublic,
       },
     });
-
     return { newMemoryHook, wordRec };
+  }
+
+  // 意味 更新（userId は不要なため削除）
+  async function updateMeaningAction(
+    meaningId: number,
+    meaningText: string,
+    isPublic: boolean
+  ): Promise<Meaning> {
+    "use server";
+    return await prisma.meaning.update({
+      where: { meaning_id: meaningId },
+      data: { meaning: meaningText, is_public: isPublic },
+    });
+  }
+
+  // 記憶hook 更新（userId は不要なため削除）
+  async function updateMemoryHookAction(
+    memoryHookId: number,
+    hookText: string,
+    isPublic: boolean
+  ): Promise<MemoryHook> {
+    "use server";
+    return await prisma.memoryHook.update({
+      where: { memory_hook_id: memoryHookId },
+      data: { memory_hook: hookText, is_public: isPublic },
+    });
+  }
+
+  // 意味 削除（論理削除、userId は不要なため削除）
+  async function deleteMeaningAction(meaningId: number): Promise<Meaning> {
+    "use server";
+    return await prisma.meaning.update({
+      where: { meaning_id: meaningId },
+      data: { is_deleted: true },
+    });
+  }
+
+  // 記憶hook 削除（論理削除、userId は不要なため削除）
+  async function deleteMemoryHookAction(memoryHookId: number): Promise<MemoryHook> {
+    "use server";
+    return await prisma.memoryHook.update({
+      where: { memory_hook_id: memoryHookId },
+      data: { is_deleted: true },
+    });
   }
 
   return (
@@ -134,7 +177,11 @@ export default async function WordDetailPage({
         initialMemoryHooks={memoryHooks}
         createMeaning={createMeaningAction}
         createMemoryHook={createMemoryHookAction}
-        userId={DUMMY_USER_ID}
+        updateMeaning={updateMeaningAction}
+        updateMemoryHook={updateMemoryHookAction}
+        deleteMeaning={deleteMeaningAction}
+        deleteMemoryHook={deleteMemoryHookAction}
+        userId={userId}
       />
       {!wordRecord && <p>「{wordParam}」はまだ登録されていません。</p>}
     </div>
