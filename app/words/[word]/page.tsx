@@ -1,4 +1,4 @@
-// [word]/page.tsx
+// app/word/page.tsx
 import { PrismaClient } from "@prisma/client";
 import type { Meaning, MemoryHook, Word } from "@prisma/client";
 import WordDetailTabs from "./WordDetailTabs";
@@ -36,7 +36,7 @@ export default async function WordDetailPage({
   let memoryHooks: MemoryHook[] = [];
 
   if (wordRecord) {
-    // 意味一覧: 「自分が作成した」or「他ユーザだが公開」かつ is_deleted=false
+    // 意味一覧: 「自分が作成した」または「他ユーザだが公開」かつ is_deleted=false
     meanings = await prisma.meaning.findMany({
       where: {
         word_id: wordRecord.word_id,
@@ -46,7 +46,7 @@ export default async function WordDetailPage({
       orderBy: { meaning_id: "asc" },
     });
 
-    // 記憶hook一覧: 「自分が作成した」or「他ユーザだが公開」かつ is_deleted=false
+    // 記憶hook一覧: 同様にフィルタリング
     memoryHooks = await prisma.memoryHook.findMany({
       where: {
         word_id: wordRecord.word_id,
@@ -58,8 +58,6 @@ export default async function WordDetailPage({
   }
 
   // --- サーバーアクション ---
-
-  // 意味 新規作成
   async function createMeaningAction(
     wordInput: string,
     meaningText: string,
@@ -94,7 +92,6 @@ export default async function WordDetailPage({
     return { newMeaning, wordRec };
   }
 
-  // 記憶hook 新規作成
   async function createMemoryHookAction(
     wordInput: string,
     hookText: string,
@@ -123,7 +120,6 @@ export default async function WordDetailPage({
     return { newMemoryHook, wordRec };
   }
 
-  // 意味 更新（userId は不要なため削除）
   async function updateMeaningAction(
     meaningId: number,
     meaningText: string,
@@ -136,7 +132,6 @@ export default async function WordDetailPage({
     });
   }
 
-  // 記憶hook 更新（userId は不要なため削除）
   async function updateMemoryHookAction(
     memoryHookId: number,
     hookText: string,
@@ -149,7 +144,6 @@ export default async function WordDetailPage({
     });
   }
 
-  // 意味 削除（論理削除、userId は不要なため削除）
   async function deleteMeaningAction(meaningId: number): Promise<Meaning> {
     "use server";
     return await prisma.meaning.update({
@@ -158,12 +152,28 @@ export default async function WordDetailPage({
     });
   }
 
-  // 記憶hook 削除（論理削除、userId は不要なため削除）
   async function deleteMemoryHookAction(memoryHookId: number): Promise<MemoryHook> {
     "use server";
     return await prisma.memoryHook.update({
       where: { memory_hook_id: memoryHookId },
       data: { is_deleted: true },
+    });
+  }
+
+  // 新規追加：My単語帳に追加するサーバーアクション
+  async function addToMyWordsAction(
+    word_id: number,
+    meaning_id: number,
+    memory_hook_id: number | null
+  ): Promise<void> {
+    "use server";
+    await prisma.userWord.create({
+      data: {
+        user: { connect: { user_id: userId } },
+        word: { connect: { word_id: word_id } },
+        meaning: { connect: { meaning_id: meaning_id } },
+        memoryHook: memory_hook_id ? { connect: { memory_hook_id: memory_hook_id } } : undefined,
+      },
     });
   }
 
@@ -181,6 +191,7 @@ export default async function WordDetailPage({
         updateMemoryHook={updateMemoryHookAction}
         deleteMeaning={deleteMeaningAction}
         deleteMemoryHook={deleteMemoryHookAction}
+        addToMyWords={addToMyWordsAction}
         userId={userId}
       />
       {!wordRecord && <p>「{wordParam}」はまだ登録されていません。</p>}

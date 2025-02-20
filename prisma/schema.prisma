@@ -1,3 +1,5 @@
+// schema.prisma
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -14,22 +16,28 @@ model User {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  // 追加: リレーションフィールド
-  meanings    Meaning[]
-  memoryHooks MemoryHook[]
+  // 既存リレーション
+  meanings     Meaning[]
+  memoryHooks  MemoryHook[]
+  
+  // 新規: UserWord とのリレーション（1:N）
+  userWords    UserWord[]
 
   @@map("users")
 }
 
 model Word {
-  word_id    Int     @id @default(autoincrement())
-  word       String  @unique
-  is_deleted Boolean @default(false)
+  word_id    Int      @id @default(autoincrement())
+  word       String   @unique
+  is_deleted Boolean  @default(false)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
   meanings     Meaning[]
   memory_hooks MemoryHook[]
+  
+  // 新規: UserWord とのリレーション（1:N）
+  userWords   UserWord[]
 
   @@map("words")
 }
@@ -45,8 +53,11 @@ model Meaning {
   updated_at DateTime @updatedAt
 
   // リレーション
-  word Word @relation(fields: [word_id], references: [word_id])
-  user User @relation(fields: [user_id], references: [user_id])
+  word  Word @relation(fields: [word_id], references: [word_id])
+  user  User @relation(fields: [user_id], references: [user_id])
+  
+  // 新規: UserWord とのリレーション（逆方向）
+  userWords UserWord[]
 
   @@map("meanings")
 }
@@ -62,8 +73,33 @@ model MemoryHook {
   updated_at     DateTime @updatedAt
 
   // リレーション
-  word Word @relation(fields: [word_id], references: [word_id])
-  user User @relation(fields: [user_id], references: [user_id])
+  word  Word @relation(fields: [word_id], references: [word_id])
+  user  User @relation(fields: [user_id], references: [user_id])
+
+  // 新規: UserWord とのリレーション（逆方向）
+  userWords UserWord[]
 
   @@map("memory_hooks")
+}
+
+// ──────────────────────────────────────────────────────────
+// 新規追加: My単語帳テーブル (UserWord) を表すモデル
+// ──────────────────────────────────────────────────────────
+model UserWord {
+  user_words_id  Int         @id @default(autoincrement())
+  user_id        String
+  word_id        Int
+  meaning_id     Int
+  memory_hook_id Int?        // 記憶hookは任意
+  is_deleted     Boolean     @default(false)
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @updatedAt
+
+  // リレーション
+  user       User        @relation(fields: [user_id], references: [user_id])
+  word       Word        @relation(fields: [word_id], references: [word_id])
+  meaning    Meaning     @relation(fields: [meaning_id], references: [meaning_id])
+  memoryHook MemoryHook? @relation(fields: [memory_hook_id], references: [memory_hook_id])
+
+  @@map("user_words")
 }
