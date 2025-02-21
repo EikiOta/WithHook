@@ -12,12 +12,13 @@ export default function DropdownMenu({ onClose }: DropdownMenuProps) {
   const router = useRouter();
 
   const handleManage = () => {
-    // 例: 意味・記憶hook管理画面へ遷移
+    // 意味・記憶hook管理画面へ遷移
     router.push("/manage");
     onClose();
   };
 
   const handleSettings = () => {
+    // 設定画面へ遷移
     router.push("/settings");
     onClose();
   };
