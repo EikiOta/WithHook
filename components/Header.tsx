@@ -1,19 +1,37 @@
 "use client";
 
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useState, useEffect, useRef } from "react";
+import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import DropdownMenu from "./DropdownMenu";
 
 export default function Header() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleTitleClick = () => {
     // ログイン中ならトップ、未ログインならログインページへ遷移
     router.push(session?.user ? "/" : "/login");
   };
 
+  // ドロップダウン外クリックで閉じる処理
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
-    <header className="flex items-center justify-between px-4 py-2 bg-white shadow">
+    <header className="flex items-center justify-between px-4 py-2 bg-white shadow relative">
       <div 
         className="cursor-pointer text-lg font-bold"
         onClick={handleTitleClick}
@@ -21,23 +39,20 @@ export default function Header() {
         with-hook
       </div>
 
-      <div>
+      <div className="relative" ref={dropdownRef}>
         {status === "loading" ? (
           <div className="text-gray-500">読み込み中...</div>
         ) : session?.user ? (
-          <div className="flex items-center space-x-4">
+          <div
+            className="flex items-center space-x-4 cursor-pointer"
+            onClick={() => setDropdownOpen((prev) => !prev)}
+          >
             <img
               src={session.user.image || "/default-avatar.png"}
               alt="Profile"
               className="w-8 h-8 rounded-full object-cover"
             />
             <span>{session.user.name || "No Name"}</span>
-            <button
-              onClick={() => signOut()}
-              className="px-3 py-1 rounded bg-red-500 text-white hover:bg-red-600"
-            >
-              ログアウト
-            </button>
           </div>
         ) : (
           <button
@@ -47,6 +62,7 @@ export default function Header() {
             ログイン
           </button>
         )}
+        {dropdownOpen && <DropdownMenu onClose={() => setDropdownOpen(false)} />}
       </div>
     </header>
   );
