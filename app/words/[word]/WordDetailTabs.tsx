@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Word, Meaning, MemoryHook } from "@prisma/client";
 import TextFormModal from "@/components/TextFormModal";
+import DeleteModal from "@/components/DeleteModal";
 
 // --- 自分の投稿を先に表示するためのソート関数 ---
 function sortOwnFirst<T extends { user_id: string }>(
@@ -55,43 +56,6 @@ type Props = {
   initialSelectedMemoryHook: MemoryHook | null;
   userId: string;
 };
-
-// 削除確認用モーダル
-function ConfirmModal({
-  message,
-  onConfirm,
-  onClose,
-}: {
-  message: string;
-  onConfirm: () => Promise<void>;
-  onClose: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white p-4 rounded shadow-md"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <p className="mb-4">{message}</p>
-        <button
-          onClick={async () => {
-            await onConfirm();
-            onClose();
-          }}
-          className="px-4 py-2 bg-red-500 text-white rounded mr-2"
-        >
-          はい
-        </button>
-        <button onClick={onClose} className="px-4 py-2 bg-gray-300 rounded">
-          キャンセル
-        </button>
-      </div>
-    </div>
-  );
-}
 
 export default function WordDetailTabs({
   wordParam,
@@ -157,19 +121,25 @@ export default function WordDetailTabs({
       {/* タブ切り替え */}
       <div className="flex gap-2 mb-4">
         <button
-          className={`px-4 py-2 border rounded ${activeTab === "wordSetting" ? "bg-blue-200" : ""}`}
+          className={`px-4 py-2 border rounded ${
+            activeTab === "wordSetting" ? "bg-blue-200" : ""
+          }`}
           onClick={() => setActiveTab("wordSetting")}
         >
           単語設定
         </button>
         <button
-          className={`px-4 py-2 border rounded ${activeTab === "meanings" ? "bg-blue-200" : ""}`}
+          className={`px-4 py-2 border rounded ${
+            activeTab === "meanings" ? "bg-blue-200" : ""
+          }`}
           onClick={() => setActiveTab("meanings")}
         >
           意味一覧
         </button>
         <button
-          className={`px-4 py-2 border rounded ${activeTab === "memoryHooks" ? "bg-blue-200" : ""}`}
+          className={`px-4 py-2 border rounded ${
+            activeTab === "memoryHooks" ? "bg-blue-200" : ""
+          }`}
           onClick={() => setActiveTab("memoryHooks")}
         >
           記憶hook一覧
@@ -365,7 +335,7 @@ export default function WordDetailTabs({
         />
       )}
       {deleteMeaningTarget && (
-        <ConfirmModal
+        <DeleteModal
           message={`「${wordParam}」の意味を削除しますか？`}
           onConfirm={async () => {
             await deleteMeaning(deleteMeaningTarget.meaning_id);
@@ -393,7 +363,7 @@ export default function WordDetailTabs({
         />
       )}
       {deleteMemoryHookTarget && (
-        <ConfirmModal
+        <DeleteModal
           message={`「${wordParam}」の記憶hookを削除しますか？`}
           onConfirm={async () => {
             await deleteMemoryHook(deleteMemoryHookTarget.memory_hook_id);

@@ -74,7 +74,7 @@ export default async function WordDetailPage({
   /**
    * saveToMyWordsAction:
    * 既存なら更新、なければ新規作成するサーバーアクション
-   * ※wordParam は外側スコープの変数を使用し、upsert によって単語レコードを必ず取得／作成する
+   * ※wordParam は外側スコープの変数を使用し、upsert により単語レコードを必ず取得／作成する
    */
   async function saveToMyWordsAction(
     meaning_id: number,

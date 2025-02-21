@@ -1,7 +1,7 @@
-import {  PrismaClient } from "@prisma/client";
-
+import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
-import MyWordsTable from "./MyWordsTable";
+import MyWordsTable from "./MyWordsTable"; // クライアントコンポーネント
+
 const prisma = new PrismaClient();
 
 export default async function MyWordsPage() {
@@ -48,6 +48,7 @@ export default async function MyWordsPage() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">My単語帳</h1>
+      {/* 4. クライアントコンポーネントへデータを渡す */}
       <MyWordsTable initialData={data} />
     </div>
   );

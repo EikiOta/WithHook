@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
+import toast, { Toaster } from "react-hot-toast";
+import DeleteModal from "@/components/DeleteModal";
 // テーブル表示用の型定義
 type MyWordItem = {
   id: number;
@@ -17,8 +18,9 @@ export default function MyWordsTable({
   initialData: MyWordItem[];
 }) {
   const router = useRouter();
-  const [data] = useState<MyWordItem[]>(initialData);
+  const [data, setData] = useState<MyWordItem[]>(initialData);
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteTarget, setDeleteTarget] = useState<MyWordItem | null>(null);
 
   const itemsPerPage = 5;
   const totalPages = Math.ceil(data.length / itemsPerPage);
@@ -34,8 +36,29 @@ export default function MyWordsTable({
     router.push(`/words/${word}`);
   };
 
+  // 削除処理（API経由で論理削除し、状態を更新）
+  const handleDelete = async (id: number) => {
+    try {
+      const res = await fetch("/api/myword/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) {
+        throw new Error("削除に失敗しました");
+      }
+      // 削除成功時、状態から該当アイテムを除去
+      setData((prev) => prev.filter((item) => item.id !== id));
+      toast.success("削除しました！");
+    } catch (error) {
+      console.error(error);
+      toast.error("削除に失敗しました");
+    }
+  };
+
   return (
     <div className="bg-white shadow-md rounded p-4 overflow-x-auto">
+      <Toaster />
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="bg-gray-100 text-left">
@@ -69,7 +92,10 @@ export default function MyWordsTable({
                   >
                     編集
                   </button>
-                  <button className="px-2 py-1 bg-red-300 rounded">
+                  <button
+                    onClick={() => setDeleteTarget(item)}
+                    className="px-2 py-1 bg-red-300 rounded"
+                  >
                     削除
                   </button>
                 </td>
@@ -109,6 +135,17 @@ export default function MyWordsTable({
           </button>
         </div>
       </div>
+
+      {/* 削除用モーダル */}
+      {deleteTarget && (
+        <DeleteModal
+          message={`本当に「${deleteTarget.word}」を削除しますか？\n作成した意味・記憶hookは削除されません。`}
+          onConfirm={async () => {
+            await handleDelete(deleteTarget.id);
+          }}
+          onClose={() => setDeleteTarget(null)}
+        />
+      )}
     </div>
   );
 }
