@@ -369,7 +369,7 @@ export default function WordDetailTabs({
         </div>
       )}
 
-      {/* 編集モーダル（意味） */}
+      {/* 編集モーダル（意味）  */}
       {editMeaning && (
         <TextFormModal
           title="意味を編集"
