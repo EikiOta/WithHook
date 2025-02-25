@@ -7,7 +7,8 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
-  // Auth.js v5では環境変数に AUTH_ プレフィックスを利用するのが推奨されます
+  // Auth.js v5 では環境変数に AUTH_ プレフィックスを利用するのが推奨されますが、
+  // ここでは従来通り NEXTAUTH_SECRET を使用します
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
     GithubProvider({
