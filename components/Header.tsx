@@ -12,11 +12,9 @@ export default function Header() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleTitleClick = () => {
-    // ログイン中ならトップ、未ログインならログインページへ遷移
     router.push(session?.user ? "/" : "/login");
   };
 
-  // ドロップダウン外クリックで閉じる処理
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (

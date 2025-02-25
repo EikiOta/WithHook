@@ -7,7 +7,6 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
-  // secret は環境変数で設定（NEXTAUTH_SECRET または AUTH_SECRET どちらでも可）
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
     GithubProvider({
@@ -22,36 +21,8 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   session: {
     strategy: "jwt",
   },
-  // 明示的な Cookie 設定を追加
-  cookies: {
-    // セッション用 Cookie
-    sessionToken: {
-      name:
-        process.env.NODE_ENV === "production"
-          ? "__Secure-next-auth.session-token"
-          : "next-auth.session-token",
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-      },
-    },
-    // CSRF 用 Cookie
-    csrfToken: {
-      name:
-        process.env.NODE_ENV === "production"
-          ? "__Secure-next-auth.csrf-token"
-          : "next-auth.csrf-token",
-      options: {
-        // CSRF トークンはクライアントのフォームから参照するため httpOnly は false にする
-        httpOnly: false,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-      },
-    },
-  },
+  // ※Cookie設定は削除し、Auth.js のデフォルト（Cookie名は "authjs.session-token" と "authjs.csrf-token"）に任せます
+
   callbacks: {
     async signIn({ user, account }) {
       if (!account) {

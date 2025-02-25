@@ -6,7 +6,7 @@ import { getToken } from "next-auth/jwt";
 export async function middleware(request: NextRequest) {
   console.log("Cookie Header:", request.headers.get("cookie"));
 
-  // Cookie 名のカスタム指定は削除し、NextAuth のデフォルトに任せる
+  // Auth.js のデフォルト Cookie 名に従って token を取得
   const token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
@@ -24,13 +24,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 未認証の場合は /login へリダイレクト
-  if (!token && pathname !== "/login") {
+  // token が存在しなかったり token.sub が空の場合は未認証と判断
+  const isAuthenticated = token && token.sub;
+
+  if (!isAuthenticated && pathname !== "/login") {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // 既に認証済みの場合、/login へアクセスしたらトップへリダイレクト
-  if (token && pathname === "/login") {
+  if (isAuthenticated && pathname === "/login") {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
@@ -38,7 +39,7 @@ export async function middleware(request: NextRequest) {
 }
 
 /* ミドルウェア適用パスの設定
-   - 適用対象: /api/auth/*、/_next/*、/favicon.ico を除く全ページ */
+   ※ /api/auth、/_next/static、/_next/image、/favicon.ico は除外 */
 export const config = {
   matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
 };
