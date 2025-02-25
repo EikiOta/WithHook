@@ -1,11 +1,9 @@
 import NextAuth from "next-auth";
 import GithubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
-const prisma = new PrismaClient();
-
-export const { auth, handlers, signIn, signOut } = NextAuth({
+export const auth = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
     GithubProvider({
@@ -20,35 +18,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   session: {
     strategy: "jwt",
   },
-  // Cookie 設定：domain オプションは削除し、リクエストドメインに合わせる
-  cookies: {
-    sessionToken: {
-      name:
-        process.env.NODE_ENV === "production"
-          ? "__Secure-authjs.session-token"
-          : "authjs.session-token",
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        // domain: 削除（自動設定に任せる）
-      },
-    },
-    csrfToken: {
-      name:
-        process.env.NODE_ENV === "production"
-          ? "__Secure-authjs.csrf-token"
-          : "authjs.csrf-token",
-      options: {
-        httpOnly: false, // クライアントが参照できるように
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        // domain: 削除
-      },
-    },
-  },
+  // Cookie 設定はデフォルトに任せる（カスタム設定を削除）
   callbacks: {
     async signIn({ user, account }) {
       if (!account) {
@@ -112,3 +82,5 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     },
   },
 });
+
+export const { handlers, signIn, signOut } = auth;
