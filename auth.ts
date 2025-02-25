@@ -1,9 +1,12 @@
+// auth.ts (プロジェクトルートに配置)
 import NextAuth from "next-auth";
 import GithubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
-import { prisma } from "@/lib/prisma";
+import { PrismaClient } from "@prisma/client";
 
-export const auth = NextAuth({
+const prisma = new PrismaClient();
+
+export const { auth, handlers, signIn, signOut } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
     GithubProvider({
@@ -18,7 +21,8 @@ export const auth = NextAuth({
   session: {
     strategy: "jwt",
   },
-  // Cookie 設定はデフォルトに任せる（カスタム設定を削除）
+  // Cookie 設定は Auth.js のデフォルトに任せます。
+  // ※これにより、CSRF トークンの自動管理が正しく動作し、MissingCSRF エラーを防げます。
   callbacks: {
     async signIn({ user, account }) {
       if (!account) {
@@ -82,5 +86,3 @@ export const auth = NextAuth({
     },
   },
 });
-
-export const { handlers, signIn, signOut } = auth;
