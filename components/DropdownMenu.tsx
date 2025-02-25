@@ -22,7 +22,6 @@ export default function DropdownMenu({ onClose }: DropdownMenuProps) {
   };
 
   const handleLogout = () => {
-    // ログアウト後に "/login" へリダイレクトする
     signOut({ callbackUrl: "/login", redirect: true });
     onClose();
   };
