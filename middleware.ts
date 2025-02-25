@@ -6,7 +6,7 @@ import { getToken } from "next-auth/jwt";
 export async function middleware(request: NextRequest) {
   console.log("Cookie Header:", request.headers.get("cookie"));
 
-  // NextAuth のデフォルト設定を利用するため、cookieName オプションは指定しない
+  // Cookie 名のカスタム指定は削除し、NextAuth のデフォルトに任せる
   const token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
@@ -15,7 +15,7 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // 認証用APIや静的ファイル、favicon.ico はそのまま通過
+  // 認証用 API や静的ファイルはそのまま通過
   if (
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/_next") ||
@@ -24,12 +24,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 未ログイン状態で保護対象ページにアクセスした場合は /login へリダイレクト
+  // 未認証の場合は /login へリダイレクト
   if (!token && pathname !== "/login") {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // ログイン済み状態で /login ページにアクセスした場合はトップページへリダイレクト
+  // 既に認証済みの場合、/login へアクセスしたらトップへリダイレクト
   if (token && pathname === "/login") {
     return NextResponse.redirect(new URL("/", request.url));
   }
@@ -37,9 +37,8 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-/* ミドルウェアが適用されるパスを指定
-   - 適用される例: /dashboard, /profile, /login（ただし /login はリダイレクト対象）
-   - 適用されない例: /api/auth/*, /_next/static/*, /_next/image*, /favicon.ico */
+/* ミドルウェア適用パスの設定
+   - 適用対象: /api/auth/*、/_next/*、/favicon.ico を除く全ページ */
 export const config = {
   matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
 };
