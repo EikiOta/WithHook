@@ -21,8 +21,11 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   session: {
     strategy: "jwt",
   },
-  // Cookie 設定は Auth.js のデフォルトに任せます。
-  // ※これにより、CSRF トークンの自動管理が正しく動作し、MissingCSRF エラーを防げます。
+  // カスタムサインインページを利用する場合は明示的に設定
+  pages: {
+    signIn: "/login",
+  },
+  // Auth.jsのデフォルトのCookie設定を利用し、CSRFトークンも自動管理されるようにする
   callbacks: {
     async signIn({ user, account }) {
       if (!account) {

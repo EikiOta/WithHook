@@ -6,7 +6,7 @@ import { getToken } from "next-auth/jwt";
 export async function middleware(request: NextRequest) {
   console.log("Cookie Header:", request.headers.get("cookie"));
 
-  // Auth.js のデフォルト設定に従い token を取得
+  // NextAuth のデフォルト設定に従い token を取得
   const token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
