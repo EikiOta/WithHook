@@ -1,4 +1,4 @@
-// auth.ts (プロジェクトルートに配置)
+// auth.ts
 import NextAuth from "next-auth";
 import GithubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
@@ -7,6 +7,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
+  // Auth.js v5では環境変数に AUTH_ プレフィックスを利用するのが推奨されます
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
     GithubProvider({
@@ -21,39 +22,40 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   session: {
     strategy: "jwt",
   },
-  // カスタムサインインページを利用する場合は明示的に設定
-  pages: {
-    signIn: "/login",
-  },
-  // Auth.js のデフォルトCookie設定に任せ、CSRFトークンも自動管理する
   callbacks: {
     async signIn({ user, account }) {
       if (!account) {
         console.error("signIn callback: account is null");
         return false;
       }
+      // プロバイダから提供される固有ID
       const providerAccountId = account.providerAccountId;
       try {
+        // providerAccountId でユーザー検索（既存ユーザーがあれば取得）
         const existingUser = await prisma.user.findUnique({
-          where: { providerAccountId },
+          where: { providerAccountId: providerAccountId },
         });
         if (!existingUser) {
+          // 存在しなければ、新規ユーザー作成
           const newUser = await prisma.user.create({
             data: {
-              providerAccountId,
+              providerAccountId: providerAccountId,
               nickname: user.name || "",
               profile_image: user.image || "",
             },
           });
+          // 作成したレコードの内部ID（user_id）を user オブジェクトにセット
           user.id = newUser.user_id;
         } else {
+          // 既存ユーザーがあれば、必要に応じて情報を更新
           await prisma.user.update({
-            where: { providerAccountId },
+            where: { providerAccountId: providerAccountId },
             data: {
               nickname: user.name || "",
               profile_image: user.image || "",
             },
           });
+          // 既存レコードの user_id をセット
           user.id = existingUser.user_id;
         }
         return true;
@@ -64,11 +66,13 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     },
     async jwt({ token, user, account }) {
       if (user) {
+        // signIn時に user.id に DB の user_id がセットされるのでそれを使用
         token.sub = user.id ? user.id.toString() : token.sub;
         token.name = user.name || "";
         token.email = user.email || "";
         token.picture = user.image || "";
       }
+      // もし account 情報があれば、providerAccountId を念のため上書き
       if (account && account.providerAccountId) {
         token.sub = account.providerAccountId;
       }

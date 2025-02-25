@@ -12,9 +12,11 @@ export default function Header() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleTitleClick = () => {
+    // ログイン中ならトップ、未ログインならログインページへ遷移
     router.push(session?.user ? "/" : "/login");
   };
 
+  // ドロップダウン外クリックで閉じる処理
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -30,7 +32,10 @@ export default function Header() {
 
   return (
     <header className="flex items-center justify-between px-4 py-2 bg-white shadow relative">
-      <div className="cursor-pointer text-lg font-bold" onClick={handleTitleClick}>
+      <div 
+        className="cursor-pointer text-lg font-bold"
+        onClick={handleTitleClick}
+      >
         with-hook
       </div>
 
