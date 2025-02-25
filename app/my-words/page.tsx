@@ -13,25 +13,15 @@ export default async function MyWordsPage() {
   const userId = session.user.id;
 
   // 2. user_wordsテーブルから「ログイン中のユーザID & is_deleted=false」のデータを取得
-  //    併せて Word (英単語) と、ユーザの memoryHook をリレーションで取得
-  //    さらに、ユーザの Meaning も1件だけ取得（例: 先頭1件）
+  //    併せて Word (英単語)、Meaning と、ユーザの memoryHook をリレーションで取得
   const userWords = await prisma.userWord.findMany({
     where: {
       user_id: userId,
       is_deleted: false,
     },
     include: {
-      word: {
-        include: {
-          meanings: {
-            where: {
-              user_id: userId,
-              is_deleted: false,
-            },
-            take: 1,
-          },
-        },
-      },
+      word: true,
+      meaning: true,       // 直接関連する Meaning を取得
       memoryHook: true,
     },
   });
@@ -41,7 +31,7 @@ export default async function MyWordsPage() {
   const data = userWords.map((uw) => ({
     id: uw.user_words_id,
     word: uw.word.word,
-    meaning: uw.word.meanings?.[0]?.meaning ?? "",
+    meaning: uw.meaning?.meaning ?? "",
     memoryHook: uw.memoryHook?.memory_hook ?? "",
   }));
 

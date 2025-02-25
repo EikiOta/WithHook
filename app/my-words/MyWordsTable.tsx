@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import DeleteModal from "@/components/DeleteModal";
+
 // テーブル表示用の型定義
 type MyWordItem = {
   id: number;
