@@ -30,10 +30,7 @@ export default function Header() {
 
   return (
     <header className="flex items-center justify-between px-4 py-2 bg-white shadow relative">
-      <div 
-        className="cursor-pointer text-lg font-bold"
-        onClick={handleTitleClick}
-      >
+      <div className="cursor-pointer text-lg font-bold" onClick={handleTitleClick}>
         with-hook
       </div>
 
