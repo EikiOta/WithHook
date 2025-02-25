@@ -24,19 +24,14 @@ export default function TextFormModal({
   const [text, setText] = useState(initialText);
   const [isPublic, setIsPublic] = useState(initialIsPublic);
   const [errorMsg, setErrorMsg] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
 
   const handleSave = async () => {
     try {
       setErrorMsg("");
-      setSuccessMsg("");
+      // 親から渡された onSave() を呼び出し、保存処理を実行
       await onSave(text, isPublic);
-      setSuccessMsg("保存しました！");
-      // 3秒間成功メッセージを表示してからモーダルを閉じる
-      setTimeout(() => {
-        setSuccessMsg("");
-        onClose();
-      }, 3000);
+      // 成功したら即モーダルを閉じる（成功メッセージは親コンポーネントでトースト表示）
+      onClose();
     } catch (err: unknown) {
       setErrorMsg(
         err instanceof Error
@@ -59,7 +54,6 @@ export default function TextFormModal({
           {title} (単語: {word})
         </h2>
         {errorMsg && <p className="text-red-500 mb-2">{errorMsg}</p>}
-        {successMsg && <p className="text-green-500 mb-2">{successMsg}</p>}
         <textarea
           className="border w-full p-2 mb-2"
           rows={3}
