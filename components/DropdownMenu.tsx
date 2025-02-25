@@ -22,9 +22,8 @@ export default function DropdownMenu({ onClose }: DropdownMenuProps) {
   };
 
   const handleLogout = async () => {
-    // signOut の完了を待ってから明示的に /login へ遷移
-    await signOut({ redirect: false });
-    router.push("/login");
+    // signOut を呼び出し、NextAuth 側で /login へのリダイレクトとセッションクリアを完了させる
+    await signOut({ callbackUrl: "/login", redirect: true });
     onClose();
   };
 
