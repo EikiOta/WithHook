@@ -6,7 +6,7 @@ import { getToken } from "next-auth/jwt";
 export async function middleware(request: NextRequest) {
   console.log("Cookie Header:", request.headers.get("cookie"));
 
-  // 本番環境では secureCookie オプションを true にする
+  // 本番環境では secureCookie オプションを true に設定
   const token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
@@ -25,15 +25,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // token が存在し、かつ token.sub が存在するかで認証状態を判断
+  // token の存在と token.sub で認証状態を判断
   const isAuthenticated = token && token.sub;
 
-  // 未認証の場合は "/login" 以外の全ページで "/login" にリダイレクト
+  // 未認証の場合、/login 以外の全ページは /login にリダイレクト
   if (!isAuthenticated && !pathname.startsWith("/login")) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // 認証済みの場合、"/login" ページへのアクセスはトップページへリダイレクト
+  // 認証済みの場合、/login ページへのアクセスはトップページへリダイレクト
   if (isAuthenticated && pathname.startsWith("/login")) {
     return NextResponse.redirect(new URL("/", request.url));
   }

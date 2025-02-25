@@ -25,7 +25,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   pages: {
     signIn: "/login",
   },
-  // Auth.jsのデフォルトのCookie設定を利用し、CSRFトークンも自動管理されるようにする
+  // Auth.js のデフォルトCookie設定に任せ、CSRFトークンも自動管理する
   callbacks: {
     async signIn({ user, account }) {
       if (!account) {

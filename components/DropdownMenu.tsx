@@ -21,9 +21,10 @@ export default function DropdownMenu({ onClose }: DropdownMenuProps) {
     onClose();
   };
 
-  const handleLogout = () => {
-    // signOut 呼び出し後、/login にリダイレクト
-    signOut({ callbackUrl: "/login", redirect: true });
+  const handleLogout = async () => {
+    // signOut の完了を待ってから明示的に /login へ遷移
+    await signOut({ redirect: false });
+    router.push("/login");
     onClose();
   };
 
