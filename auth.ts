@@ -4,6 +4,12 @@ import GithubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
 import { PrismaClient } from "@prisma/client";
 
+// NEXTAUTH_URL 環境変数からドメイン部分を抽出（例："https://with-hook.vercel.app" → "with-hook.vercel.app"）
+const prodDomain =
+  process.env.NODE_ENV === "production" && process.env.NEXTAUTH_URL
+    ? process.env.NEXTAUTH_URL.replace(/^https?:\/\//, "")
+    : undefined;
+
 const prisma = new PrismaClient();
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
@@ -21,8 +27,36 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   session: {
     strategy: "jwt",
   },
-  // ※Cookie設定は削除し、Auth.js のデフォルト（Cookie名は "authjs.session-token" と "authjs.csrf-token"）に任せます
-
+  // Cookie 設定において、production なら domain を prodDomain に設定
+  cookies: {
+    sessionToken: {
+      name:
+        process.env.NODE_ENV === "production"
+          ? "__Secure-authjs.session-token"
+          : "authjs.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        domain: prodDomain,
+      },
+    },
+    csrfToken: {
+      name:
+        process.env.NODE_ENV === "production"
+          ? "__Secure-authjs.csrf-token"
+          : "authjs.csrf-token",
+      options: {
+        // CSRF トークンはクライアントから参照できる必要があるので httpOnly: false
+        httpOnly: false,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        domain: prodDomain,
+      },
+    },
+  },
   callbacks: {
     async signIn({ user, account }) {
       if (!account) {

@@ -1,3 +1,4 @@
+// middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
@@ -5,7 +6,7 @@ import { getToken } from "next-auth/jwt";
 export async function middleware(request: NextRequest) {
   console.log("Cookie Header:", request.headers.get("cookie"));
 
-  // Auth.js のデフォルト設定に従って token を取得
+  // Auth.js のデフォルト設定に従い token を取得
   const token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
@@ -14,7 +15,7 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // 認証用 API や静的ファイルはそのまま通過
+  // API や静的ファイルはそのまま通過
   if (
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/_next") ||
@@ -23,15 +24,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // token が存在し、かつ token.sub が存在する場合を認証済みと判断
+  // token が存在し、かつ token.sub が存在するかで認証状態を判断
   const isAuthenticated = token && token.sub;
 
-  // 未認証状態の場合は "/login" 以外の全ページで "/login" へリダイレクト
+  // 未認証なら "/login" 以外の全ページで "/login" へリダイレクト
   if (!isAuthenticated && !pathname.startsWith("/login")) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // 認証済みの場合、"/login" で始まるページ（"/login"や"/login/"など）にアクセスされたらトップページへリダイレクト
+  // 認証済みの場合、"/login" で始まるページ（"/login" や "/login/" など）にアクセスされたらトップページへリダイレクト
   if (isAuthenticated && pathname.startsWith("/login")) {
     return NextResponse.redirect(new URL("/", request.url));
   }
