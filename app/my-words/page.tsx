@@ -38,7 +38,7 @@ export default async function MyWordsPage() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">My単語帳</h1>
-      {/* 4. クライアントコンポーネントへデータを渡す */}
+      {/* クライアントコンポーネントへデータを渡す */}
       <MyWordsTable initialData={data} />
     </div>
   );

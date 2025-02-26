@@ -46,6 +46,7 @@ export default async function WordDetailPage({
         is_deleted: false,
         OR: [{ user_id: userId }, { is_public: true }],
       },
+      include: { user: true }, // 作成者情報を取得
       orderBy: { meaning_id: "asc" },
     });
 
@@ -55,6 +56,7 @@ export default async function WordDetailPage({
         is_deleted: false,
         OR: [{ user_id: userId }, { is_public: true }],
       },
+      include: { user: true }, // 作成者情報を取得
       orderBy: { memory_hook_id: "asc" },
     });
   }
@@ -74,7 +76,6 @@ export default async function WordDetailPage({
   /**
    * saveToMyWordsAction:
    * 既存なら更新、なければ新規作成するサーバーアクション
-   * ※wordParam は外側スコープの変数を使用し、upsert により単語レコードを必ず取得／作成する
    */
   async function saveToMyWordsAction(
     meaning_id: number,
@@ -118,7 +119,7 @@ export default async function WordDetailPage({
     meaningText: string,
     isPublic: boolean,
     userId: string
-  ): Promise<{ newMeaning: Meaning; wordRec: Word }> {
+  ): Promise<{ newMeaning: Meaning & { user: { profile_image: string | null; nickname: string | null } }; wordRec: Word }> {
     "use server";
     let wordRec = await prisma.word.findUnique({ where: { word: wordInput } });
     if (!wordRec) {
@@ -130,7 +131,7 @@ export default async function WordDetailPage({
     if (existing) {
       throw new Error("既にあなたはこの単語の意味を登録済みです。");
     }
-    const newMeaning = await prisma.meaning.create({
+    await prisma.meaning.create({
       data: {
         word_id: wordRec.word_id,
         user_id: userId,
@@ -138,7 +139,12 @@ export default async function WordDetailPage({
         is_public: isPublic,
       },
     });
-    return { newMeaning, wordRec };
+    // 作成後、user情報を include して取得
+    const newMeaning = await prisma.meaning.findFirst({
+      where: { word_id: wordRec.word_id, user_id: userId, meaning: meaningText },
+      include: { user: true },
+    });
+    return { newMeaning: newMeaning!, wordRec };
   }
 
   // createMemoryHookAction
@@ -147,13 +153,13 @@ export default async function WordDetailPage({
     hookText: string,
     isPublic: boolean,
     userId: string
-  ): Promise<{ newMemoryHook: MemoryHook; wordRec: Word }> {
+  ): Promise<{ newMemoryHook: MemoryHook & { user: { profile_image: string | null; nickname: string | null } }; wordRec: Word }> {
     "use server";
     let wordRec = await prisma.word.findUnique({ where: { word: wordInput } });
     if (!wordRec) {
       wordRec = await prisma.word.create({ data: { word: wordInput } });
     }
-    const newMemoryHook = await prisma.memoryHook.create({
+    await prisma.memoryHook.create({
       data: {
         word_id: wordRec.word_id,
         user_id: userId,
@@ -161,7 +167,12 @@ export default async function WordDetailPage({
         is_public: isPublic,
       },
     });
-    return { newMemoryHook, wordRec };
+    // 作成後、user情報を include して取得
+    const newMemoryHook = await prisma.memoryHook.findFirst({
+      where: { word_id: wordRec.word_id, user_id: userId, memory_hook: hookText },
+      include: { user: true },
+    });
+    return { newMemoryHook: newMemoryHook!, wordRec };
   }
 
   // updateMeaningAction
@@ -227,8 +238,8 @@ export default async function WordDetailPage({
       <h1 className="text-xl font-bold mb-4">単語詳細ページ</h1>
       <WordDetailTabs
         wordParam={wordParam}
-        initialMeanings={meanings}
-        initialMemoryHooks={memoryHooks}
+        initialMeanings={meanings as (Meaning & { user: { profile_image: string | null; nickname: string | null } })[]}
+        initialMemoryHooks={memoryHooks as (MemoryHook & { user: { profile_image: string | null; nickname: string | null } })[]}
         createMeaning={createMeaningAction}
         createMemoryHook={createMemoryHookAction}
         updateMeaning={updateMeaningAction}
@@ -237,8 +248,12 @@ export default async function WordDetailPage({
         deleteMemoryHook={deleteMemoryHookAction}
         saveToMyWords={saveToMyWordsAction}
         isMyWordSaved={isMyWordSaved}
-        initialSelectedMeaning={initialSelectedMeaning}
-        initialSelectedMemoryHook={initialSelectedMemoryHook}
+        initialSelectedMeaning={
+          initialSelectedMeaning as (Meaning & { user: { profile_image: string | null; nickname: string | null } }) | null
+        }
+        initialSelectedMemoryHook={
+          initialSelectedMemoryHook as (MemoryHook & { user: { profile_image: string | null; nickname: string | null } }) | null
+        }
         userId={userId}
       />
       {!wordRecord && <p>「{wordParam}」はまだ登録されていません。</p>}

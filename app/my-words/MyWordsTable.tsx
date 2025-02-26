@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import DeleteModal from "@/components/DeleteModal";
 
@@ -19,6 +19,7 @@ export default function MyWordsTable({
   initialData: MyWordItem[];
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [data, setData] = useState<MyWordItem[]>(initialData);
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<MyWordItem | null>(null);
@@ -56,6 +57,14 @@ export default function MyWordsTable({
       toast.error("削除に失敗しました");
     }
   };
+
+  // クエリパラメータ "saved" があればトースト表示し、パラメータを除去
+  useEffect(() => {
+    if (searchParams.get("saved") === "1") {
+      toast.success("保存しました！");
+      router.replace("/my-words");
+    }
+  }, [searchParams, router]);
 
   return (
     <div className="bg-white shadow-md rounded p-4 overflow-x-auto">

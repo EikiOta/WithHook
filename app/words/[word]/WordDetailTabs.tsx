@@ -1,9 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Word, Meaning, MemoryHook } from "@prisma/client";
 import TextFormModal from "@/components/TextFormModal";
 import DeleteModal from "@/components/DeleteModal";
+
+// 拡張型：作成者情報を含む Meaning と MemoryHook の型
+type MeaningWithUser = Meaning & {
+  user: {
+    profile_image: string | null;
+    nickname: string | null;
+  };
+};
+
+type MemoryHookWithUser = MemoryHook & {
+  user: {
+    profile_image: string | null;
+    nickname: string | null;
+  };
+};
 
 // --- 自分の投稿を先に表示するためのソート関数 ---
 function sortOwnFirst<T extends { user_id: string }>(
@@ -21,20 +37,20 @@ function sortOwnFirst<T extends { user_id: string }>(
 
 type Props = {
   wordParam: string;
-  initialMeanings: Meaning[];
-  initialMemoryHooks: MemoryHook[];
+  initialMeanings: MeaningWithUser[];
+  initialMemoryHooks: MemoryHookWithUser[];
   createMeaning: (
     wordInput: string,
     meaningText: string,
     isPublic: boolean,
     userId: string
-  ) => Promise<{ newMeaning: Meaning; wordRec: Word }>;
+  ) => Promise<{ newMeaning: MeaningWithUser; wordRec: Word }>;
   createMemoryHook: (
     wordInput: string,
     hookText: string,
     isPublic: boolean,
     userId: string
-  ) => Promise<{ newMemoryHook: MemoryHook; wordRec: Word }>;
+  ) => Promise<{ newMemoryHook: MemoryHookWithUser; wordRec: Word }>;
   updateMeaning: (
     meaningId: number,
     meaningText: string,
@@ -52,8 +68,8 @@ type Props = {
     memory_hook_id: number | null
   ) => Promise<void>;
   isMyWordSaved: boolean;
-  initialSelectedMeaning: Meaning | null;
-  initialSelectedMemoryHook: MemoryHook | null;
+  initialSelectedMeaning: MeaningWithUser | null;
+  initialSelectedMemoryHook: MemoryHookWithUser | null;
   userId: string;
 };
 
@@ -73,43 +89,37 @@ export default function WordDetailTabs({
   initialSelectedMemoryHook,
   userId,
 }: Props) {
+  const router = useRouter();
+
   const [activeTab, setActiveTab] = useState<"wordSetting" | "meanings" | "memoryHooks">(
     "wordSetting"
   );
 
-  const [meanings, setMeanings] = useState<Meaning[]>(() =>
+  const [meanings, setMeanings] = useState<MeaningWithUser[]>(() =>
     sortOwnFirst(initialMeanings, userId, "meaning_id")
   );
-  const [memoryHooks, setMemoryHooks] = useState<MemoryHook[]>(() =>
+  const [memoryHooks, setMemoryHooks] = useState<MemoryHookWithUser[]>(() =>
     sortOwnFirst(initialMemoryHooks, userId, "memory_hook_id")
   );
 
-  const [selectedMeaning, setSelectedMeaning] = useState<Meaning | null>(
+  const [selectedMeaning, setSelectedMeaning] = useState<MeaningWithUser | null>(
     initialSelectedMeaning
   );
-  const [selectedMemoryHook, setSelectedMemoryHook] = useState<MemoryHook | null>(
+  const [selectedMemoryHook, setSelectedMemoryHook] = useState<MemoryHookWithUser | null>(
     initialSelectedMemoryHook
   );
 
   // 新規作成 or 編集モーダルの状態管理
   const [showCreateMeaningModal, setShowCreateMeaningModal] = useState(false);
   const [showCreateMemoryHookModal, setShowCreateMemoryHookModal] = useState(false);
-  const [editMeaning, setEditMeaning] = useState<Meaning | null>(null);
-  const [editMemoryHook, setEditMemoryHook] = useState<MemoryHook | null>(null);
+  const [editMeaning, setEditMeaning] = useState<MeaningWithUser | null>(null);
+  const [editMemoryHook, setEditMemoryHook] = useState<MemoryHookWithUser | null>(null);
 
   // 削除モーダルの状態管理
-  const [deleteMeaningTarget, setDeleteMeaningTarget] = useState<Meaning | null>(null);
-  const [deleteMemoryHookTarget, setDeleteMemoryHookTarget] = useState<MemoryHook | null>(
-    null
-  );
+  const [deleteMeaningTarget, setDeleteMeaningTarget] = useState<MeaningWithUser | null>(null);
+  const [deleteMemoryHookTarget, setDeleteMemoryHookTarget] = useState<MemoryHookWithUser | null>(null);
 
-  // 「My単語帳に追加」ボタン用の簡易メッセージ
-  const [addMessage, setAddMessage] = useState("");
-
-  // ▼ 画面右上に出すトーストメッセージ
-  const [toastMessage, setToastMessage] = useState("");
-
-  // 「My単語帳に追加」ボタン押下
+  // 「My単語帳に追加／更新」ボタン押下時の処理
   const handleSaveToMyWords = async () => {
     if (!selectedMeaning) return;
     try {
@@ -117,29 +127,15 @@ export default function WordDetailTabs({
         selectedMeaning.meaning_id,
         selectedMemoryHook ? selectedMemoryHook.memory_hook_id : null
       );
-      setAddMessage("保存しました！");
-      setTimeout(() => setAddMessage(""), 3000);
+      router.push("/my-words?saved=1");
     } catch (err) {
       console.error(err);
       alert(String(err));
     }
   };
 
-  // ▼ トーストメッセージを表示するためのヘルパー
-  const showToast = (msg: string, durationMs = 2000) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(""), durationMs);
-  };
-
   return (
     <div className="mt-4">
-      {/* トースト表示 */}
-      {toastMessage && (
-        <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow">
-          {toastMessage}
-        </div>
-      )}
-
       {/* タブ切り替え */}
       <div className="flex gap-2 mb-4">
         <button
@@ -176,7 +172,7 @@ export default function WordDetailTabs({
           selectedMemoryHook={selectedMemoryHook}
           onClearMemoryHook={() => setSelectedMemoryHook(null)}
           onAddToMyWords={handleSaveToMyWords}
-          addMessage={addMessage}
+          addMessage={""}
           isMyWordSaved={isMyWordSaved}
         />
       )}
@@ -199,13 +195,11 @@ export default function WordDetailTabs({
               placeholder="意味を入力"
               initialIsPublic={true}
               onSave={async (text, isPublic) => {
-                // 保存ロジック: createMeaning呼び出し → state更新 → トースト表示
                 const { newMeaning } = await createMeaning(wordParam, text, isPublic, userId);
                 setMeanings((prev) =>
                   sortOwnFirst([...prev, newMeaning], userId, "meaning_id")
                 );
                 setSelectedMeaning(newMeaning);
-                showToast("保存しました");
               }}
               onClose={() => setShowCreateMeaningModal(false)}
             />
@@ -217,6 +211,7 @@ export default function WordDetailTabs({
                 <th className="border p-2 w-16">No</th>
                 <th className="border p-2">意味</th>
                 <th className="border p-2 w-24">公開?</th>
+                <th className="border p-2 w-32">作成者</th>
                 <th className="border p-2 w-24">編集</th>
                 <th className="border p-2 w-24">削除</th>
               </tr>
@@ -227,43 +222,55 @@ export default function WordDetailTabs({
                 return (
                   <tr
                     key={m.meaning_id}
-                    className={`cursor-pointer ${
-                      isSelected ? "bg-blue-100" : "hover:bg-gray-50"
-                    }`}
+                    className={`cursor-pointer ${isSelected ? "bg-blue-100" : "hover:bg-gray-50"}`}
                     onClick={() => setSelectedMeaning(m)}
                   >
                     <td className="border p-2 text-center">{idx + 1}</td>
                     <td className="border p-2">
                       {m.meaning}
-                      {m.user_id === userId && <span className="text-red-500 ml-1">★</span>}
+                      {m.user_id === userId && (
+                        <span className="text-red-500 ml-1">★</span>
+                      )}
                     </td>
-                    <td className="border p-2 text-center">{m.is_public ? "公開" : "非公開"}</td>
-                    <td
-                      className="border p-2 text-center"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        className="px-2 py-1 bg-yellow-300 rounded"
-                        onClick={() => setEditMeaning(m)}
-                      >
-                        編集
-                      </button>
+                    <td className="border p-2 text-center">
+                      {m.is_public ? "公開" : "非公開"}
                     </td>
-                    <td
-                      className="border p-2 text-center"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        className="px-2 py-1 bg-red-300 rounded"
-                        onClick={() => {
-                          setDeleteMeaningTarget(m);
-                          if (selectedMeaning?.meaning_id === m.meaning_id) {
-                            setSelectedMeaning(null);
-                          }
-                        }}
-                      >
-                        削除
-                      </button>
+                    <td className="border p-2 text-center">
+                      {m.user && (
+                        <div className="flex items-center justify-center gap-1">
+                          <img
+                            src={m.user.profile_image || "/default-avatar.png"}
+                            alt="User Icon"
+                            className="w-6 h-6 rounded-full object-cover"
+                          />
+                          <span>{m.user.nickname || "No Name"}</span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="border p-2 text-center" onClick={(e) => e.stopPropagation()}>
+                      {m.user_id === userId && (
+                        <button
+                          className="px-2 py-1 bg-yellow-300 rounded"
+                          onClick={() => setEditMeaning(m)}
+                        >
+                          編集
+                        </button>
+                      )}
+                    </td>
+                    <td className="border p-2 text-center" onClick={(e) => e.stopPropagation()}>
+                      {m.user_id === userId && (
+                        <button
+                          className="px-2 py-1 bg-red-300 rounded"
+                          onClick={() => {
+                            setDeleteMeaningTarget(m);
+                            if (selectedMeaning?.meaning_id === m.meaning_id) {
+                              setSelectedMeaning(null);
+                            }
+                          }}
+                        >
+                          削除
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -291,17 +298,11 @@ export default function WordDetailTabs({
               placeholder="記憶hookを入力"
               initialIsPublic={true}
               onSave={async (text, isPublic) => {
-                const { newMemoryHook } = await createMemoryHook(
-                  wordParam,
-                  text,
-                  isPublic,
-                  userId
-                );
+                const { newMemoryHook } = await createMemoryHook(wordParam, text, isPublic, userId);
                 setMemoryHooks((prev) =>
                   sortOwnFirst([...prev, newMemoryHook], userId, "memory_hook_id")
                 );
                 setSelectedMemoryHook(newMemoryHook);
-                showToast("保存しました");
               }}
               onClose={() => setShowCreateMemoryHookModal(false)}
             />
@@ -313,6 +314,7 @@ export default function WordDetailTabs({
                 <th className="border p-2 w-16">No</th>
                 <th className="border p-2">記憶hook</th>
                 <th className="border p-2 w-24">公開?</th>
+                <th className="border p-2 w-32">作成者</th>
                 <th className="border p-2 w-24">編集</th>
                 <th className="border p-2 w-24">削除</th>
               </tr>
@@ -323,43 +325,55 @@ export default function WordDetailTabs({
                 return (
                   <tr
                     key={h.memory_hook_id}
-                    className={`cursor-pointer ${
-                      isSelected ? "bg-blue-100" : "hover:bg-gray-50"
-                    }`}
+                    className={`cursor-pointer ${isSelected ? "bg-blue-100" : "hover:bg-gray-50"}`}
                     onClick={() => setSelectedMemoryHook(h)}
                   >
                     <td className="border p-2 text-center">{idx + 1}</td>
                     <td className="border p-2">
                       {h.memory_hook}
-                      {h.user_id === userId && <span className="text-red-500 ml-1">★</span>}
+                      {h.user_id === userId && (
+                        <span className="text-red-500 ml-1">★</span>
+                      )}
                     </td>
-                    <td className="border p-2 text-center">{h.is_public ? "公開" : "非公開"}</td>
-                    <td
-                      className="border p-2 text-center"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        className="px-2 py-1 bg-yellow-300 rounded"
-                        onClick={() => setEditMemoryHook(h)}
-                      >
-                        編集
-                      </button>
+                    <td className="border p-2 text-center">
+                      {h.is_public ? "公開" : "非公開"}
                     </td>
-                    <td
-                      className="border p-2 text-center"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        className="px-2 py-1 bg-red-300 rounded"
-                        onClick={() => {
-                          setDeleteMemoryHookTarget(h);
-                          if (selectedMemoryHook?.memory_hook_id === h.memory_hook_id) {
-                            setSelectedMemoryHook(null);
-                          }
-                        }}
-                      >
-                        削除
-                      </button>
+                    <td className="border p-2 text-center">
+                      {h.user && (
+                        <div className="flex items-center justify-center gap-1">
+                          <img
+                            src={h.user.profile_image || "/default-avatar.png"}
+                            alt="User Icon"
+                            className="w-6 h-6 rounded-full object-cover"
+                          />
+                          <span>{h.user.nickname || "No Name"}</span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="border p-2 text-center" onClick={(e) => e.stopPropagation()}>
+                      {h.user_id === userId && (
+                        <button
+                          className="px-2 py-1 bg-yellow-300 rounded"
+                          onClick={() => setEditMemoryHook(h)}
+                        >
+                          編集
+                        </button>
+                      )}
+                    </td>
+                    <td className="border p-2 text-center" onClick={(e) => e.stopPropagation()}>
+                      {h.user_id === userId && (
+                        <button
+                          className="px-2 py-1 bg-red-300 rounded"
+                          onClick={() => {
+                            setDeleteMemoryHookTarget(h);
+                            if (selectedMemoryHook?.memory_hook_id === h.memory_hook_id) {
+                              setSelectedMemoryHook(null);
+                            }
+                          }}
+                        >
+                          削除
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -369,7 +383,7 @@ export default function WordDetailTabs({
         </div>
       )}
 
-      {/* 編集モーダル（意味）  */}
+      {/* 編集／削除用モーダル */}
       {editMeaning && (
         <TextFormModal
           title="意味を編集"
@@ -380,14 +394,15 @@ export default function WordDetailTabs({
           onSave={async (text, isPublic) => {
             const updated = await updateMeaning(editMeaning.meaning_id, text, isPublic);
             setMeanings((prev) =>
-              prev.map((m) => (m.meaning_id === updated.meaning_id ? updated : m))
+              prev.map((m) =>
+                m.meaning_id === updated.meaning_id ? { ...updated, user: m.user } : m
+              )
             );
-            showToast("保存しました");
+            router.push("/my-words?saved=1");
           }}
           onClose={() => setEditMeaning(null)}
         />
       )}
-      {/* 削除モーダル（意味） */}
       {deleteMeaningTarget && (
         <DeleteModal
           message={`「${wordParam}」の意味を削除しますか？`}
@@ -400,8 +415,6 @@ export default function WordDetailTabs({
           onClose={() => setDeleteMeaningTarget(null)}
         />
       )}
-
-      {/* 編集モーダル（記憶hook） */}
       {editMemoryHook && (
         <TextFormModal
           title="記憶hookを編集"
@@ -410,20 +423,17 @@ export default function WordDetailTabs({
           placeholder="記憶hookを入力"
           initialIsPublic={editMemoryHook.is_public}
           onSave={async (text, isPublic) => {
-            const updated = await updateMemoryHook(
-              editMemoryHook.memory_hook_id,
-              text,
-              isPublic
-            );
+            const updated = await updateMemoryHook(editMemoryHook.memory_hook_id, text, isPublic);
             setMemoryHooks((prev) =>
-              prev.map((h) => (h.memory_hook_id === updated.memory_hook_id ? updated : h))
+              prev.map((h) =>
+                h.memory_hook_id === updated.memory_hook_id ? { ...updated, user: h.user } : h
+              )
             );
-            showToast("保存しました");
+            router.push("/my-words?saved=1");
           }}
           onClose={() => setEditMemoryHook(null)}
         />
       )}
-      {/* 削除モーダル（記憶hook） */}
       {deleteMemoryHookTarget && (
         <DeleteModal
           message={`「${wordParam}」の記憶hookを削除しますか？`}
@@ -442,7 +452,6 @@ export default function WordDetailTabs({
 
 // ─────────────────────────────────────────────────────
 // WordSettingTab コンポーネント（変化なし）
-// ─────────────────────────────────────────────────────
 function WordSettingTab({
   wordParam,
   selectedMeaning,
