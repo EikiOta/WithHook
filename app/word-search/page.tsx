@@ -1,7 +1,7 @@
+// word-search/page.tsx
 "use client";
 
 import { useState } from "react";
-// 追加: useRouter をインポート
 import { useRouter } from "next/navigation";
 
 // ▼ 短縮形の品詞マッピング（表示時に [名][動][形][副] のように使う）
@@ -139,6 +139,9 @@ export default function WordSearchPage() {
         });
       });
 
+      // ▼ 辞書式配列のABC順にソート
+      finalAggregatedResults.sort((a, b) => a.word.localeCompare(b.word));
+
       // ▼ 結果を状態に保存し、ページをリセット
       setAggregatedResults(finalAggregatedResults);
       setCurrentPage(1);
@@ -169,7 +172,7 @@ export default function WordSearchPage() {
       {/* タイトル */}
       <h1 className="text-2xl font-bold mb-4">英単語検索</h1>
 
-      {/* 検索フォームと品詞フィルタをまとめてフォームにする */}
+      {/* 検索フォームと品詞フィルタ */}
       <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-2 mb-6">
         <input
           type="text"
@@ -229,18 +232,12 @@ export default function WordSearchPage() {
               currentResults.map((item, index) => (
                 <tr
                   key={item.word}
-                  /* クリック時に詳細ページへ飛ぶ & ホバー時のカーソルを指マークに */
                   className="hover:bg-blue-50 cursor-pointer"
                   onClick={() => router.push(`/words/${item.word}`)}
                 >
-                  <td className="border p-2 text-center">
-                    {indexOfFirst + index + 1}
-                  </td>
+                  <td className="border p-2 text-center">{indexOfFirst + index + 1}</td>
                   <td className="border p-2 whitespace-nowrap">
-                    {/* 例: [名][動][形] のようにまとめて表示 */}
-                    {item.parts
-                      .map((pos) => `[${PART_OF_SPEECH_MAP[pos] ?? pos}]`)
-                      .join("")}
+                    {item.parts.map((pos) => `[${PART_OF_SPEECH_MAP[pos] ?? pos}]`).join("")}
                   </td>
                   <td className="border p-2">{item.word}</td>
                 </tr>
