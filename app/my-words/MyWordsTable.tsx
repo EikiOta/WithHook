@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import DeleteModal from "@/components/DeleteModal";
+import OperationButtons from "@/components/OperationButtons";
 
 // テーブル表示用の型定義
 type MyWordItem = {
@@ -96,18 +97,10 @@ export default function MyWordsTable({
                 <td className="border p-2">{item.meaning}</td>
                 <td className="border p-2">{item.memoryHook}</td>
                 <td className="border p-2 text-center">
-                  <button
-                    onClick={() => handleEdit(item.word)}
-                    className="px-2 py-1 bg-yellow-300 rounded mr-2"
-                  >
-                    編集
-                  </button>
-                  <button
-                    onClick={() => setDeleteTarget(item)}
-                    className="px-2 py-1 bg-red-300 rounded"
-                  >
-                    削除
-                  </button>
+                  <OperationButtons
+                    onEdit={() => handleEdit(item.word)}
+                    onDelete={() => setDeleteTarget(item)}
+                  />
                 </td>
               </tr>
             ))

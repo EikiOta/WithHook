@@ -4,6 +4,7 @@ import { useState } from "react";
 import TextFormModal from "@/components/TextFormModal";
 import DeleteModal from "@/components/DeleteModal";
 import toast, { Toaster } from "react-hot-toast";
+import OperationButtons from "@/components/OperationButtons";
 
 /**
  * 「意味一覧」「記憶hook一覧」タブを切り替えて表示するクライアントコンポーネント
@@ -122,7 +123,6 @@ export default function ManageTabs({
       body: JSON.stringify({ meaning_id }),
     });
     if (!res.ok) {
-      // API からエラーメッセージが返っている場合はそれを取得
       const errorData = await res.json();
       throw new Error(errorData.error || "意味の削除に失敗しました");
     }
@@ -191,19 +191,11 @@ export default function ManageTabs({
                     <td className="border p-2 text-center">
                       {m.is_public ? "公開" : "非公開"}
                     </td>
-                    <td className="border p-2 text-center space-x-2">
-                      <button
-                        onClick={() => setEditMeaning(m)}
-                        className="px-2 py-1 bg-yellow-300 rounded"
-                      >
-                        編集
-                      </button>
-                      <button
-                        onClick={() => setDeleteMeaningTarget(m)}
-                        className="px-2 py-1 bg-red-300 rounded"
-                      >
-                        削除
-                      </button>
+                    <td className="border p-2 text-center">
+                      <OperationButtons
+                        onEdit={() => setEditMeaning(m)}
+                        onDelete={() => setDeleteMeaningTarget(m)}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -241,19 +233,11 @@ export default function ManageTabs({
                     <td className="border p-2 text-center">
                       {h.is_public ? "公開" : "非公開"}
                     </td>
-                    <td className="border p-2 text-center space-x-2">
-                      <button
-                        onClick={() => setEditMemoryHook(h)}
-                        className="px-2 py-1 bg-yellow-300 rounded"
-                      >
-                        編集
-                      </button>
-                      <button
-                        onClick={() => setDeleteMemoryHookTarget(h)}
-                        className="px-2 py-1 bg-red-300 rounded"
-                      >
-                        削除
-                      </button>
+                    <td className="border p-2 text-center">
+                      <OperationButtons
+                        onEdit={() => setEditMemoryHook(h)}
+                        onDelete={() => setDeleteMemoryHookTarget(h)}
+                      />
                     </td>
                   </tr>
                 ))}
