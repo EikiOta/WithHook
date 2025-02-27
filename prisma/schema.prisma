@@ -16,6 +16,7 @@ model User {
   profile_image     String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+  deleted_at        DateTime? // 論理削除日時（NULLなら有効）
 
   // 既存のリレーション
   meanings     Meaning[]
@@ -28,7 +29,6 @@ model User {
 model Word {
   word_id    Int      @id @default(autoincrement())
   word       String   @unique
-  is_deleted Boolean  @default(false)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
@@ -45,9 +45,9 @@ model Meaning {
   user_id    String
   meaning    String
   is_public  Boolean  @default(false)
-  is_deleted Boolean  @default(false)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+  deleted_at DateTime? // 論理削除日時
 
   // リレーション
   word      Word @relation(fields: [word_id], references: [word_id])
@@ -63,9 +63,9 @@ model MemoryHook {
   user_id        String
   memory_hook    String
   is_public      Boolean  @default(false)
-  is_deleted     Boolean  @default(false)
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
+  deleted_at     DateTime? // 論理削除日時
 
   // リレーション
   word      Word @relation(fields: [word_id], references: [word_id])
@@ -81,9 +81,9 @@ model UserWord {
   word_id        Int
   meaning_id     Int
   memory_hook_id Int?        // 記憶hookは任意
-  is_deleted     Boolean     @default(false)
   created_at     DateTime    @default(now())
   updated_at     DateTime    @updatedAt
+  deleted_at     DateTime?   // 論理削除日時
 
   // リレーション
   user       User        @relation(fields: [user_id], references: [user_id])

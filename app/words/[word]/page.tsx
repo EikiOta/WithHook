@@ -44,7 +44,7 @@ export default async function WordDetailPage({
     meanings = await prisma.meaning.findMany({
       where: {
         word_id: wordRecord.word_id,
-        is_deleted: false,
+        deleted_at: null, // 削除されていないもの
         OR: [{ user_id: userId }, { is_public: true }],
       },
       include: { user: true },
@@ -54,7 +54,7 @@ export default async function WordDetailPage({
     memoryHooks = await prisma.memoryHook.findMany({
       where: {
         word_id: wordRecord.word_id,
-        is_deleted: false,
+        deleted_at: null, // 削除されていないもの
         OR: [{ user_id: userId }, { is_public: true }],
       },
       include: { user: true },
@@ -69,7 +69,7 @@ export default async function WordDetailPage({
       where: {
         user_id: userId,
         word_id: wordRecord.word_id,
-        is_deleted: false,
+        deleted_at: null, // 削除されていないもの
       },
     });
   }
@@ -89,7 +89,7 @@ export default async function WordDetailPage({
       where: {
         user_id: userId,
         word_id: foundWord.word_id,
-        is_deleted: false,
+        deleted_at: null,
       },
     });
 
@@ -125,7 +125,7 @@ export default async function WordDetailPage({
       wordRec = await prisma.word.create({ data: { word: wordInput } });
     }
     const existing = await prisma.meaning.findFirst({
-      where: { word_id: wordRec.word_id, user_id: userId, is_deleted: false },
+      where: { word_id: wordRec.word_id, user_id: userId, deleted_at: null },
     });
     if (existing) {
       throw new Error("既にあなたはこの単語の意味を登録済みです。");

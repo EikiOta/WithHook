@@ -12,9 +12,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "対象レコードが見つかりません" }, { status: 404 });
     }
     
-    // すでに削除済みかどうかをチェック
-    if (record.is_deleted) {
-      // すでに削除済みの場合は状態を変更せず、現在のレコードを返す
+    // すでに削除済みかどうかをチェック（deleted_at が null でなければ削除済みとみなす）
+    if (record.deleted_at !== null) {
       return NextResponse.json({ deleted: record, message: "既に削除済みです" });
     }
     
@@ -27,7 +26,7 @@ export async function POST(request: Request) {
     const deleted = await prisma.meaning.update({
       where: { meaning_id },
       data: { 
-        is_deleted: true,
+        deleted_at: new Date(),
         meaning: newMeaning,
       },
     });

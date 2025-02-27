@@ -1,3 +1,4 @@
+// my-words/page.tsx
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import MyWordsTable from "./MyWordsTable"; // クライアントコンポーネント
@@ -12,12 +13,12 @@ export default async function MyWordsPage() {
   }
   const userId = session.user.id;
 
-  // 2. user_wordsテーブルから「ログイン中のユーザID & is_deleted=false」のデータを取得
-  //    併せて Word (英単語)、Meaning と、ユーザの memoryHook をリレーションで取得
+  // 2. user_wordsテーブルから「ログイン中のユーザID & deleted_at が null のデータ」を取得
+  //    併せて Word (英単語)、Meaning と、ユーザの MemoryHook をリレーションで取得
   const userWords = await prisma.userWord.findMany({
     where: {
       user_id: userId,
-      is_deleted: false,
+      deleted_at: null,
     },
     include: {
       word: true,

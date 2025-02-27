@@ -1,3 +1,4 @@
+// app/manage/page.tsx
 import { auth } from "@/auth";
 import ManageTabs from "./ManageTabs";
 import { PrismaClient } from "@prisma/client";
@@ -16,7 +17,7 @@ export default async function ManagePage() {
   const userMeanings = await prisma.meaning.findMany({
     where: {
       user_id: userId,
-      is_deleted: false,
+      deleted_at: null,  // 削除されていないもののみ
     },
     orderBy: { meaning_id: "asc" },
     include: {
@@ -28,7 +29,7 @@ export default async function ManagePage() {
   const userMemoryHooks = await prisma.memoryHook.findMany({
     where: {
       user_id: userId,
-      is_deleted: false,
+      deleted_at: null,  // 削除されていないもののみ
     },
     orderBy: { memory_hook_id: "asc" },
     include: {

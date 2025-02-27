@@ -3,25 +3,25 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-export async function middleware(request: NextRequest) {
-  console.log("Cookie Header:", request.headers.get("cookie"));
-  
-  // 環境に応じた Cookie 名を設定する
+export async function middleware(req: NextRequest) {
+  console.log("Cookie Header:", req.headers.get("cookie"));
+
+  // 環境に応じた Cookie 名の設定
   const cookieName =
     process.env.NODE_ENV === "production"
       ? "__Secure-authjs.session-token"
       : "authjs.session-token";
-  
+
   const token = await getToken({
-    req: request,
+    req,
     secret: process.env.NEXTAUTH_SECRET,
     cookieName,
   });
   console.log("Retrieved token:", token);
 
-  const { pathname } = request.nextUrl;
+  const { pathname } = req.nextUrl;
 
-  // API や静的ファイル、favicon.ico はそのまま通過
+  // API、Next.js 内部、favicon はそのまま通過
   if (
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/_next") ||
@@ -30,20 +30,39 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 未ログイン状態で保護対象ページにアクセスした場合は /login へリダイレクト
+  // 未ログインの場合は /login へリダイレクト
   if (!token && pathname !== "/login") {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // ログイン済み状態で /login ページにアクセスした場合はトップページへリダイレクト
+  // token が存在する場合、内部 API を呼んで削除状態をチェック
+  if (token) {
+    const checkUrl = new URL("/api/user/check-deleted", req.url);
+    try {
+      const response = await fetch(checkUrl.toString(), { cache: "no-store" });
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        const data = await response.json();
+        if (data.deleted) {
+          return NextResponse.redirect(new URL("/login", req.url));
+        }
+      } else {
+        console.error("Unexpected content type from check-deleted API:", contentType);
+      }
+    } catch (err) {
+      console.error("Error checking deletion status:", err);
+      // エラーが発生した場合は安全側に倒す（ここではそのまま続行）
+    }
+  }
+
+  // ログイン済みで /login にアクセス中ならトップへリダイレクト
   if (token && pathname === "/login") {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
   return NextResponse.next();
 }
 
-/* ミドルウェア適用パスの設定 */
 export const config = {
   matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
 };
