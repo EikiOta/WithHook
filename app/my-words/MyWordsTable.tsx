@@ -94,8 +94,20 @@ export default function MyWordsTable({
                   {(currentPage - 1) * itemsPerPage + (index + 1)}
                 </td>
                 <td className="border p-2">{item.word}</td>
-                <td className="border p-2">{item.meaning}</td>
-                <td className="border p-2">{item.memoryHook}</td>
+                <td className="border p-2">
+                  {item.meaning.startsWith("この意味はユーザによって削除されました") ? (
+                    <span className="text-red-600">{item.meaning}</span>
+                  ) : (
+                    item.meaning
+                  )}
+                </td>
+                <td className="border p-2">
+                  {item.memoryHook.startsWith("この記憶hookはユーザによって削除されました") ? (
+                    <span className="text-red-600">{item.memoryHook}</span>
+                  ) : (
+                    item.memoryHook
+                  )}
+                </td>
                 <td className="border p-2 text-center">
                   <OperationButtons
                     onEdit={() => handleEdit(item.word)}

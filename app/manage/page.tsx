@@ -2,10 +2,6 @@ import { auth } from "@/auth";
 import ManageTabs from "./ManageTabs";
 import { PrismaClient } from "@prisma/client";
 
-/**
- * 「意味・記憶hook管理」ページ
- * ログイン中のユーザが登録した「意味」「記憶hook」を、各レコードに join した英単語情報とともに取得して一覧表示する
- */
 const prisma = new PrismaClient();
 
 export default async function ManagePage() {

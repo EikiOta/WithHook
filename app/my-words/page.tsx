@@ -21,7 +21,7 @@ export default async function MyWordsPage() {
     },
     include: {
       word: true,
-      meaning: true,       // 直接関連する Meaning を取得
+      meaning: true, // 直接関連する Meaning を取得
       memoryHook: true,
     },
   });
@@ -31,8 +31,8 @@ export default async function MyWordsPage() {
   const data = userWords.map((uw) => ({
     id: uw.user_words_id,
     word: uw.word.word,
-    meaning: uw.meaning?.meaning ?? "",
-    memoryHook: uw.memoryHook?.memory_hook ?? "",
+    meaning: uw.meaning ? uw.meaning.meaning : "",
+    memoryHook: uw.memoryHook ? uw.memoryHook.memory_hook : "",
   }));
 
   return (

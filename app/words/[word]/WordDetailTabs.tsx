@@ -6,6 +6,7 @@ import type { Word, Meaning, MemoryHook } from "@prisma/client";
 import TextFormModal from "@/components/TextFormModal";
 import DeleteModal from "@/components/DeleteModal";
 import OperationButtons from "@/components/OperationButtons";
+import toast from "react-hot-toast";
 
 // 拡張型：作成者情報を含む Meaning と MemoryHook の型
 type MeaningWithUser = Meaning & {
@@ -52,18 +53,6 @@ type Props = {
     isPublic: boolean,
     userId: string
   ) => Promise<{ newMemoryHook: MemoryHookWithUser; wordRec: Word }>;
-  updateMeaning: (
-    meaningId: number,
-    meaningText: string,
-    isPublic: boolean
-  ) => Promise<Meaning>;
-  updateMemoryHook: (
-    memoryHookId: number,
-    hookText: string,
-    isPublic: boolean
-  ) => Promise<MemoryHook>;
-  deleteMeaning: (meaningId: number) => Promise<Meaning>;
-  deleteMemoryHook: (memoryHookId: number) => Promise<MemoryHook>;
   saveToMyWords: (
     meaning_id: number,
     memory_hook_id: number | null
@@ -80,10 +69,6 @@ export default function WordDetailTabs({
   initialMemoryHooks,
   createMeaning,
   createMemoryHook,
-  updateMeaning,
-  updateMemoryHook,
-  deleteMeaning,
-  deleteMemoryHook,
   saveToMyWords,
   isMyWordSaved,
   initialSelectedMeaning,
@@ -92,12 +77,9 @@ export default function WordDetailTabs({
 }: Props) {
   const router = useRouter();
 
-  // 編集保存成功メッセージ状態
   const [editMessage, setEditMessage] = useState("");
 
-  const [activeTab, setActiveTab] = useState<"wordSetting" | "meanings" | "memoryHooks">(
-    "wordSetting"
-  );
+  const [activeTab, setActiveTab] = useState<"wordSetting" | "meanings" | "memoryHooks">("wordSetting");
 
   const [meanings, setMeanings] = useState<MeaningWithUser[]>(() =>
     sortOwnFirst(initialMeanings, userId, "meaning_id")
@@ -113,17 +95,14 @@ export default function WordDetailTabs({
     initialSelectedMemoryHook
   );
 
-  // 新規作成 or 編集モーダルの状態管理
   const [showCreateMeaningModal, setShowCreateMeaningModal] = useState(false);
   const [showCreateMemoryHookModal, setShowCreateMemoryHookModal] = useState(false);
   const [editMeaning, setEditMeaning] = useState<MeaningWithUser | null>(null);
   const [editMemoryHook, setEditMemoryHook] = useState<MemoryHookWithUser | null>(null);
 
-  // 削除モーダルの状態管理
   const [deleteMeaningTarget, setDeleteMeaningTarget] = useState<MeaningWithUser | null>(null);
   const [deleteMemoryHookTarget, setDeleteMemoryHookTarget] = useState<MemoryHookWithUser | null>(null);
 
-  // 「My単語帳に追加／更新」ボタン押下時の処理（My単語帳ページへ遷移）
   const handleSaveToMyWords = async () => {
     if (!selectedMeaning) return;
     try {
@@ -138,16 +117,81 @@ export default function WordDetailTabs({
     }
   };
 
+  // 更新処理：API経由
+  const handleMeaningUpdate = async (text: string, isPublic: boolean) => {
+    const res = await fetch("/api/meaning/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ meaning_id: editMeaning?.meaning_id, meaningText: text, isPublic }),
+    });
+    if (!res.ok) {
+      throw new Error("意味の更新に失敗しました");
+    }
+    const data = await res.json();
+    setMeanings((prev) =>
+      prev.map((m) =>
+        m.meaning_id === data.updated.meaning_id ? { ...m, ...data.updated } : m
+      )
+    );
+    toast.success("編集しました！");
+    setEditMeaning(null);
+  };
+
+  const handleMemoryHookUpdate = async (text: string, isPublic: boolean) => {
+    const res = await fetch("/api/memoryHook/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memory_hook_id: editMemoryHook?.memory_hook_id, hookText: text, isPublic }),
+    });
+    if (!res.ok) {
+      throw new Error("記憶hookの更新に失敗しました");
+    }
+    const data = await res.json();
+    setMemoryHooks((prev) =>
+      prev.map((h) =>
+        h.memory_hook_id === data.updated.memory_hook_id ? { ...h, ...data.updated } : h
+      )
+    );
+    toast.success("編集しました！");
+    setEditMemoryHook(null);
+  };
+
+  // 削除処理：API経由
+  const handleDeleteMeaning = async (meaningId: number) => {
+    const res = await fetch("/api/meaning/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ meaning_id: meaningId }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "意味の削除に失敗しました");
+    }
+    setMeanings((prev) => prev.filter((m) => m.meaning_id !== meaningId));
+    toast.success("削除しました！");
+  };
+
+  const handleDeleteMemoryHook = async (memoryHookId: number) => {
+    const res = await fetch("/api/memoryHook/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memory_hook_id: memoryHookId }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "記憶hookの削除に失敗しました");
+    }
+    setMemoryHooks((prev) => prev.filter((h) => h.memory_hook_id !== memoryHookId));
+    toast.success("削除しました！");
+  };
+
   return (
     <div className="mt-4">
-      {/* 編集保存成功メッセージ */}
       {editMessage && (
         <div className="mb-4 p-2 bg-green-200 text-green-800 rounded">
           {editMessage}
         </div>
       )}
-
-      {/* タブ切り替え */}
       <div className="flex gap-2 mb-4">
         <button
           className={`px-4 py-2 border rounded ${activeTab === "wordSetting" ? "bg-blue-200" : ""}`}
@@ -169,7 +213,6 @@ export default function WordDetailTabs({
         </button>
       </div>
 
-      {/* タブ内容：単語設定 */}
       {activeTab === "wordSetting" && (
         <WordSettingTab
           wordParam={wordParam}
@@ -182,7 +225,6 @@ export default function WordDetailTabs({
         />
       )}
 
-      {/* タブ内容：意味一覧（解除ボタンは不要） */}
       {activeTab === "meanings" && (
         <div className="border p-4">
           <h2 className="text-lg font-bold mb-2">意味一覧</h2>
@@ -262,7 +304,6 @@ export default function WordDetailTabs({
         </div>
       )}
 
-      {/* タブ内容：記憶hook一覧（解除ボタン追加） */}
       {activeTab === "memoryHooks" && (
         <div className="border p-4">
           <h2 className="text-lg font-bold mb-2">記憶hook一覧</h2>
@@ -350,7 +391,6 @@ export default function WordDetailTabs({
         </div>
       )}
 
-      {/* 編集／削除用モーダル */}
       {editMeaning && (
         <TextFormModal
           title="意味を編集"
@@ -358,28 +398,23 @@ export default function WordDetailTabs({
           initialText={editMeaning.meaning}
           placeholder="意味を入力"
           initialIsPublic={editMeaning.is_public}
-          onSave={async (text, isPublic) => {
-            const updated = await updateMeaning(editMeaning.meaning_id, text, isPublic);
-            setMeanings((prev) =>
-              prev.map((m) =>
-                m.meaning_id === updated.meaning_id ? { ...updated, user: m.user } : m
-              )
-            );
-            setEditMeaning(null);
-            setEditMessage("保存しました！");
-            setTimeout(() => setEditMessage(""), 3000);
-          }}
+          onSave={handleMeaningUpdate}
           onClose={() => setEditMeaning(null)}
         />
       )}
       {deleteMeaningTarget && (
         <DeleteModal
-          message={`「${wordParam}」の意味を削除しますか？`}
+          message={`本当に「${wordParam}」の意味を削除しますか？`}
           onConfirm={async () => {
-            await deleteMeaning(deleteMeaningTarget.meaning_id);
-            setMeanings((prev) =>
-              prev.filter((m) => m.meaning_id !== deleteMeaningTarget.meaning_id)
-            );
+            try {
+              await handleDeleteMeaning(deleteMeaningTarget.meaning_id);
+              setMeanings((prev) =>
+                prev.filter((m) => m.meaning_id !== deleteMeaningTarget.meaning_id)
+              );
+            } catch (error) {
+              console.log(error);
+              toast.error(error instanceof Error ? error.message : "削除に失敗しました");
+            }
           }}
           onClose={() => setDeleteMeaningTarget(null)}
         />
@@ -391,28 +426,23 @@ export default function WordDetailTabs({
           initialText={editMemoryHook.memory_hook}
           placeholder="記憶hookを入力"
           initialIsPublic={editMemoryHook.is_public}
-          onSave={async (text, isPublic) => {
-            const updated = await updateMemoryHook(editMemoryHook.memory_hook_id, text, isPublic);
-            setMemoryHooks((prev) =>
-              prev.map((h) =>
-                h.memory_hook_id === updated.memory_hook_id ? { ...updated, user: h.user } : h
-              )
-            );
-            setEditMemoryHook(null);
-            setEditMessage("保存しました！");
-            setTimeout(() => setEditMessage(""), 3000);
-          }}
+          onSave={handleMemoryHookUpdate}
           onClose={() => setEditMemoryHook(null)}
         />
       )}
       {deleteMemoryHookTarget && (
         <DeleteModal
-          message={`「${wordParam}」の記憶hookを削除しますか？`}
+          message={`本当に「${wordParam}」の記憶hookを削除しますか？`}
           onConfirm={async () => {
-            await deleteMemoryHook(deleteMemoryHookTarget.memory_hook_id);
-            setMemoryHooks((prev) =>
-              prev.filter((h) => h.memory_hook_id !== deleteMemoryHookTarget.memory_hook_id)
-            );
+            try {
+              await handleDeleteMemoryHook(deleteMemoryHookTarget.memory_hook_id);
+              setMemoryHooks((prev) =>
+                prev.filter((h) => h.memory_hook_id !== deleteMemoryHookTarget.memory_hook_id)
+              );
+            } catch (error) {
+              console.log(error);
+              toast.error("削除に失敗しました");
+            }
           }}
           onClose={() => setDeleteMemoryHookTarget(null)}
         />
@@ -421,8 +451,6 @@ export default function WordDetailTabs({
   );
 }
 
-// ─────────────────────────────────────────────────────
-// WordSettingTab コンポーネント（変化なし）
 function WordSettingTab({
   wordParam,
   selectedMeaning,

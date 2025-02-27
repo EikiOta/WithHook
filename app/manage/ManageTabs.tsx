@@ -1,3 +1,4 @@
+// app/manage/ManageTabs.tsx
 "use client";
 
 import { useState } from "react";
@@ -5,13 +6,6 @@ import TextFormModal from "@/components/TextFormModal";
 import DeleteModal from "@/components/DeleteModal";
 import toast, { Toaster } from "react-hot-toast";
 import OperationButtons from "@/components/OperationButtons";
-
-/**
- * 「意味一覧」「記憶hook一覧」タブを切り替えて表示するクライアントコンポーネント
- * 各テーブルには「No / 英単語 / 意味または記憶hook / 公開? / 操作」列を表示し、
- * 編集ボタン押下で TextFormModal を開いて API 経由で更新処理を行い、トースト通知を表示する。
- * 削除ボタン押下時は、削除前にチェックして、My単語帳で使用中の場合は削除をブロックする。
- */
 
 // 型定義（DBから取得したレコードを想定）
 type Word = {
@@ -61,7 +55,7 @@ export default function ManageTabs({
     newText: string,
     newIsPublic: boolean
   ): Promise<Meaning> => {
-    const res = await fetch("/api/manage/updateMeaning", {
+    const res = await fetch("/api/meaning/update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ meaning_id: meaningId, meaningText: newText, isPublic: newIsPublic }),
@@ -79,7 +73,7 @@ export default function ManageTabs({
     newText: string,
     newIsPublic: boolean
   ): Promise<MemoryHook> => {
-    const res = await fetch("/api/manage/updateMemoryHook", {
+    const res = await fetch("/api/memoryHook/update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ memory_hook_id: memoryHookId, hookText: newText, isPublic: newIsPublic }),
@@ -115,9 +109,9 @@ export default function ManageTabs({
     setEditMemoryHook(null);
   };
 
-  // 削除処理 (意味)
+  // 削除処理 (意味) – 管理画面用 APIでは、自分自身のMy単語帳へのリンクがある場合は削除不可
   const handleDeleteMeaning = async (meaning_id: number) => {
-    const res = await fetch("/api/manage/deleteMeaning", {
+    const res = await fetch("/api/meaning/delete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ meaning_id }),
@@ -132,7 +126,7 @@ export default function ManageTabs({
 
   // 削除処理 (記憶hook)
   const handleDeleteMemoryHook = async (memory_hook_id: number) => {
-    const res = await fetch("/api/manage/deleteMemoryHook", {
+    const res = await fetch("/api/memoryHook/delete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ memory_hook_id }),
