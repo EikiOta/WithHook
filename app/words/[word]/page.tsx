@@ -1,3 +1,4 @@
+// words/[word]/page.tsx
 import { Prisma, PrismaClient } from "@prisma/client";
 import type { Meaning, MemoryHook, Word, UserWord } from "@prisma/client";
 import WordDetailTabs from "./WordDetailTabs";

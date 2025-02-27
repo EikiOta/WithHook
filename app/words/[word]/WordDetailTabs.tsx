@@ -1,3 +1,4 @@
+// words/[word]/WordDetailTabs.tsx
 "use client";
 
 import { useState } from "react";
@@ -77,8 +78,7 @@ export default function WordDetailTabs({
 }: Props) {
   const router = useRouter();
 
-  const [editMessage, setEditMessage] = useState("");
-
+  // 削除対象の状態変数のみ残す（editMessage は使用していないため削除）
   const [activeTab, setActiveTab] = useState<"wordSetting" | "meanings" | "memoryHooks">("wordSetting");
 
   const [meanings, setMeanings] = useState<MeaningWithUser[]>(() =>
@@ -187,11 +187,6 @@ export default function WordDetailTabs({
 
   return (
     <div className="mt-4">
-      {editMessage && (
-        <div className="mb-4 p-2 bg-green-200 text-green-800 rounded">
-          {editMessage}
-        </div>
-      )}
       <div className="flex gap-2 mb-4">
         <button
           className={`px-4 py-2 border rounded ${activeTab === "wordSetting" ? "bg-blue-200" : ""}`}
