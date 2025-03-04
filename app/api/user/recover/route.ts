@@ -38,7 +38,8 @@ export async function POST() {
       );
     }
 
-    console.log(`Found deleted user: user_id=${deletedUser.user_id}, deleted_at=${deletedUser.deleted_at?.toISOString()}`);
+    const userId = deletedUser.user_id;
+    console.log(`Found deleted user: user_id=${userId}, deleted_at=${deletedUser.deleted_at?.toISOString()}`);
 
     // ユーザーの削除日時を取得
     const userDeletedAt = deletedUser.deleted_at;
@@ -46,42 +47,42 @@ export async function POST() {
       return NextResponse.json({ error: "Invalid deletion timestamp" }, { status: 400 });
     }
 
-    // 削除前のデータ数を確認
-    const deletedCounts = await Promise.all([
+    // 削除データの数を確認
+    const [deletedMeanings, deletedMemoryHooks, deletedUserWords] = await Promise.all([
       prisma.meaning.count({ 
         where: { 
-          user_id: deletedUser.user_id, 
+          user_id: userId, 
           deleted_at: userDeletedAt 
         } 
       }),
       prisma.memoryHook.count({ 
         where: { 
-          user_id: deletedUser.user_id, 
+          user_id: userId, 
           deleted_at: userDeletedAt 
         } 
       }),
       prisma.userWord.count({ 
         where: { 
-          user_id: deletedUser.user_id, 
-          deleted_at: { not: null } 
+          user_id: userId, 
+          deleted_at: userDeletedAt 
         } 
       })
     ]);
     
-    console.log(`Records to recover - Meanings: ${deletedCounts[0]}, MemoryHooks: ${deletedCounts[1]}, UserWords: ${deletedCounts[2]}`);
+    console.log(`Records to recover - Meanings: ${deletedMeanings}, MemoryHooks: ${deletedMemoryHooks}, UserWords: ${deletedUserWords}`);
 
     try {
       // トランザクションを利用してユーザーおよび関連レコードを復旧
       const results = await prisma.$transaction([
         // Userテーブルの復旧
         prisma.user.update({
-          where: { user_id: deletedUser.user_id },
+          where: { user_id: userId },
           data: { deleted_at: null }
         }),
         // Meaningテーブルの復旧
         prisma.meaning.updateMany({
           where: { 
-            user_id: deletedUser.user_id,
+            user_id: userId,
             deleted_at: userDeletedAt
           },
           data: { deleted_at: null }
@@ -89,7 +90,7 @@ export async function POST() {
         // MemoryHookテーブルの復旧
         prisma.memoryHook.updateMany({
           where: { 
-            user_id: deletedUser.user_id,
+            user_id: userId,
             deleted_at: userDeletedAt
           },
           data: { deleted_at: null }
@@ -97,8 +98,8 @@ export async function POST() {
         // UserWordテーブルの復旧
         prisma.userWord.updateMany({
           where: { 
-            user_id: deletedUser.user_id,
-            deleted_at: { not: null }
+            user_id: userId,
+            deleted_at: userDeletedAt
           },
           data: { deleted_at: null }
         })
@@ -107,32 +108,32 @@ export async function POST() {
       console.log("Recovery transaction completed. Results:", JSON.stringify(results));
       
       // 復旧後のデータ数を確認
-      const recoveredCounts = await Promise.all([
+      const [activeAfterMeanings, activeAfterMemoryHooks, activeAfterUserWords] = await Promise.all([
         prisma.meaning.count({ 
           where: { 
-            user_id: deletedUser.user_id, 
+            user_id: userId, 
             deleted_at: null 
           } 
         }),
         prisma.memoryHook.count({ 
           where: { 
-            user_id: deletedUser.user_id, 
+            user_id: userId, 
             deleted_at: null 
           } 
         }),
         prisma.userWord.count({ 
           where: { 
-            user_id: deletedUser.user_id, 
+            user_id: userId, 
             deleted_at: null 
           } 
         })
       ]);
       
-      console.log(`After recovery - Active Meanings: ${recoveredCounts[0]}, Active MemoryHooks: ${recoveredCounts[1]}, Active UserWords: ${recoveredCounts[2]}`);
+      console.log(`After recovery - Active Meanings: ${activeAfterMeanings}, Active MemoryHooks: ${activeAfterMemoryHooks}, Active UserWords: ${activeAfterUserWords}`);
       
       // 再確認: ユーザーが正しく復旧されたか確認
       const verifyUser = await prisma.user.findUnique({
-        where: { user_id: deletedUser.user_id }
+        where: { user_id: userId }
       });
       
       console.log("Verification after recovery:", verifyUser ? 

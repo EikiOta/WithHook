@@ -1,11 +1,7 @@
 // app/api/user/delete/route.ts
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient({
-  log: ['query', 'info', 'warn', 'error'],
-});
+import prisma from "@/lib/prisma"; 
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function POST(_request: Request) {
@@ -29,64 +25,174 @@ export async function POST(_request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    console.log(`Deleting user with user_id: ${user.user_id}, providerAccountId: ${providerAccountId}`);
+    const userId = user.user_id;
+    console.log(`Deleting user with user_id=${userId}, providerAccountId=${providerAccountId}`);
 
-    // 削除前のデータ数を確認
-    const beforeCount = await Promise.all([
-      prisma.meaning.count({ where: { user_id: user.user_id, deleted_at: null } }),
-      prisma.memoryHook.count({ where: { user_id: user.user_id, deleted_at: null } }),
-      prisma.userWord.count({ where: { user_id: user.user_id, deleted_at: null } })
-    ]);
+    // === 診断パート：データ量の確認 ===
+    console.log("=== DIAGNOSTIC INFORMATION ===");
     
-    console.log(`Before deletion - Meanings: ${beforeCount[0]}, MemoryHooks: ${beforeCount[1]}, UserWords: ${beforeCount[2]}`);
-
-    // トランザクションを利用して、削除処理を実行
-    const results = await prisma.$transaction([
-      // 1. ユーザーテーブルの該当ユーザーの deleted_at を now に更新
-      prisma.user.update({
-        where: { user_id: user.user_id },
-        data: { deleted_at: now }
-      }),
-      // 2. meanings テーブル：user_id が一致かつ deleted_at が null のものに now を設定
-      prisma.meaning.updateMany({
-        where: { user_id: user.user_id, deleted_at: null },
-        data: { deleted_at: now }
-      }),
-      // 3. memory_hooks テーブル：同様に更新
-      prisma.memoryHook.updateMany({
-        where: { user_id: user.user_id, deleted_at: null },
-        data: { deleted_at: now }
-      }),
-      // 4. user_words テーブル：同様に更新
-      prisma.userWord.updateMany({
-        where: { user_id: user.user_id, deleted_at: null },
-        data: { deleted_at: now }
-      })
-    ]);
-
-    // 削除結果のログ出力
-    console.log(`Deletion results:`, JSON.stringify(results));
-
-    // 削除後のデータ数を確認
-    const afterCount = await Promise.all([
-      prisma.meaning.count({ where: { user_id: user.user_id, deleted_at: null } }),
-      prisma.memoryHook.count({ where: { user_id: user.user_id, deleted_at: null } }),
-      prisma.userWord.count({ where: { user_id: user.user_id, deleted_at: null } })
-    ]);
+    // DB全体のレコード数を確認
+    const totalMeanings = await prisma.meaning.count();
+    const totalMemoryHooks = await prisma.memoryHook.count();
+    const totalUserWords = await prisma.userWord.count();
+    console.log(`Total records in DB: Meanings=${totalMeanings}, MemoryHooks=${totalMemoryHooks}, UserWords=${totalUserWords}`);
     
-    console.log(`After deletion - Meanings: ${afterCount[0]}, MemoryHooks: ${afterCount[1]}, UserWords: ${afterCount[2]}`);
+    // このユーザーの関連データを検索
+    const userMeanings = await prisma.meaning.findMany({
+      where: { user_id: userId },
+      select: { meaning_id: true, user_id: true, deleted_at: true }
+    });
+    
+    const userMemoryHooks = await prisma.memoryHook.findMany({
+      where: { user_id: userId },
+      select: { memory_hook_id: true, user_id: true, deleted_at: true }
+    });
+    
+    const userWords = await prisma.userWord.findMany({
+      where: { user_id: userId },
+      select: { user_words_id: true, user_id: true, deleted_at: true }
+    });
 
-    // 削除されていない場合の警告
-    if (afterCount[0] !== 0 || afterCount[1] !== 0 || afterCount[2] !== 0) {
-      console.warn("Some records were not marked as deleted!");
+    console.log(`User related data (including already deleted): Meanings=${userMeanings.length}, MemoryHooks=${userMemoryHooks.length}, UserWords=${userWords.length}`);
+    
+    // すでに削除済みのデータがあるか確認
+    const alreadyDeletedMeanings = userMeanings.filter(m => m.deleted_at !== null).length;
+    const alreadyDeletedHooks = userMemoryHooks.filter(h => h.deleted_at !== null).length;
+    const alreadyDeletedWords = userWords.filter(w => w.deleted_at !== null).length;
+    
+    console.log(`Already deleted data: Meanings=${alreadyDeletedMeanings}, MemoryHooks=${alreadyDeletedHooks}, UserWords=${alreadyDeletedWords}`);
+
+    // アクティブなデータ (削除対象)
+    const activeMeanings = userMeanings.filter(m => m.deleted_at === null);
+    const activeHooks = userMemoryHooks.filter(h => h.deleted_at === null);
+    const activeWords = userWords.filter(w => w.deleted_at === null);
+    
+    console.log(`Active data to delete: Meanings=${activeMeanings.length}, MemoryHooks=${activeHooks.length}, UserWords=${activeWords.length}`);
+    
+    if (activeMeanings.length > 0) {
+      console.log("Sample active meanings:", activeMeanings.slice(0, 3));
     }
+    
+    // === 重要：user_idの型と値の確認 ===
+    console.log(`User ID type: ${typeof userId}`);
+    console.log(`User ID value: "${userId}"`);
+    
+    // サンプルクエリで状態を確認
+    if (totalMeanings > 0) {
+      const sampleMeaning = await prisma.meaning.findFirst({
+        select: { meaning_id: true, user_id: true, deleted_at: true }
+      });
+      console.log(`Sample meaning from DB: ${JSON.stringify(sampleMeaning)}`);
+      console.log(`Sample meaning user_id type: ${typeof sampleMeaning.user_id}`);
+    }
+    
+    console.log("=== END DIAGNOSTIC ===");
 
+    // ユーザー削除の実行
+    console.log("Starting user deletion...");
+    const updatedUser = await prisma.user.update({
+      where: { user_id: userId },
+      data: { deleted_at: now }
+    });
+    console.log("User deleted:", updatedUser.user_id, updatedUser.deleted_at);
+
+    // 関連データの削除（アクティブなデータがある場合）
+    // ここではIDを直接指定して削除してみる
+    let meaningResults = { count: 0 };
+    let hookResults = { count: 0 };
+    let wordResults = { count: 0 };
+    
+    if (activeMeanings.length > 0) {
+      const meaningIds = activeMeanings.map(m => m.meaning_id);
+      console.log(`Trying to delete meanings by IDs: ${meaningIds.join(', ')}`);
+      
+      // 各IDごとに個別に削除
+      for (const id of meaningIds) {
+        try {
+          await prisma.meaning.update({
+            where: { meaning_id: id },
+            data: { deleted_at: now }
+          });
+          meaningResults.count++;
+        } catch (e) {
+          console.error(`Failed to delete meaning ${id}:`, e);
+        }
+      }
+    }
+    
+    if (activeHooks.length > 0) {
+      const hookIds = activeHooks.map(h => h.memory_hook_id);
+      console.log(`Trying to delete memory hooks by IDs: ${hookIds.join(', ')}`);
+      
+      for (const id of hookIds) {
+        try {
+          await prisma.memoryHook.update({
+            where: { memory_hook_id: id },
+            data: { deleted_at: now }
+          });
+          hookResults.count++;
+        } catch (e) {
+          console.error(`Failed to delete memory hook ${id}:`, e);
+        }
+      }
+    }
+    
+    if (activeWords.length > 0) {
+      const wordIds = activeWords.map(w => w.user_words_id);
+      console.log(`Trying to delete user words by IDs: ${wordIds.join(', ')}`);
+      
+      for (const id of wordIds) {
+        try {
+          await prisma.userWord.update({
+            where: { user_words_id: id },
+            data: { deleted_at: now }
+          });
+          wordResults.count++;
+        } catch (e) {
+          console.error(`Failed to delete user word ${id}:`, e);
+        }
+      }
+    }
+    
+    // 最後に、もう一度通常の更新クエリを試みる
+    try {
+      console.log("Attempting standard update query as last resort");
+      
+      // バルク更新を試みる
+      const bulkMeaningResults = await prisma.meaning.updateMany({
+        where: { user_id: userId, deleted_at: null },
+        data: { deleted_at: now }
+      });
+      console.log("Bulk meanings deleted:", bulkMeaningResults.count);
+      
+      const bulkHookResults = await prisma.memoryHook.updateMany({
+        where: { user_id: userId, deleted_at: null },
+        data: { deleted_at: now }
+      });
+      console.log("Bulk memory hooks deleted:", bulkHookResults.count);
+      
+      const bulkWordResults = await prisma.userWord.updateMany({
+        where: { user_id: userId, deleted_at: null },
+        data: { deleted_at: now }
+      });
+      console.log("Bulk user words deleted:", bulkWordResults.count);
+      
+      // 最終結果に加算
+      meaningResults.count += bulkMeaningResults.count;
+      hookResults.count += bulkHookResults.count;
+      wordResults.count += bulkWordResults.count;
+    } catch (e) {
+      console.error("Failed bulk update:", e);
+    }
+    
+    // 削除成功!
     return NextResponse.json({ 
       success: true,
       deletedCounts: {
-        meanings: beforeCount[0] - afterCount[0],
-        memoryHooks: beforeCount[1] - afterCount[1],
-        userWords: beforeCount[2] - afterCount[2]
+        user: 1,
+        meanings: meaningResults.count,
+        memoryHooks: hookResults.count,
+        userWords: wordResults.count
       }
     });
   } catch (error) {
