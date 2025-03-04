@@ -1,5 +1,5 @@
 // words/[word]/page.tsx
-import { Prisma, PrismaClient } from "@prisma/client";
+import {PrismaClient } from "@prisma/client";
 import type { Meaning, MemoryHook, Word, UserWord } from "@prisma/client";
 import WordDetailTabs from "./WordDetailTabs";
 import { auth } from "@/auth";
@@ -72,42 +72,6 @@ export default async function WordDetailPage({
         deleted_at: null, // 削除されていないもの
       },
     });
-  }
-
-  async function saveToMyWordsAction(
-    meaning_id: number,
-    memory_hook_id: number | null
-  ): Promise<void> {
-    "use server";
-    const foundWord = await prisma.word.upsert({
-      where: { word: wordParam },
-      update: {},
-      create: { word: wordParam },
-    });
-
-    const existingUserWord = await prisma.userWord.findFirst({
-      where: {
-        user_id: userId,
-        word_id: foundWord.word_id,
-        deleted_at: null,
-      },
-    });
-
-    if (existingUserWord) {
-      await prisma.userWord.update({
-        where: { user_words_id: existingUserWord.user_words_id },
-        data: { meaning_id, memory_hook_id },
-      });
-    } else {
-      await prisma.userWord.create({
-        data: {
-          user_id: userId,
-          word_id: foundWord.word_id,
-          meaning_id,
-          memory_hook_id,
-        } as Prisma.UserWordUncheckedCreateInput,
-      });
-    }
   }
 
   async function createMeaningAction(
@@ -204,7 +168,6 @@ export default async function WordDetailPage({
         }
         createMeaning={createMeaningAction}
         createMemoryHook={createMemoryHookAction}
-        saveToMyWords={saveToMyWordsAction}
         isMyWordSaved={Boolean(myWordRecord)}
         initialSelectedMeaning={initialSelectedMeaning}
         initialSelectedMemoryHook={initialSelectedMemoryHook}

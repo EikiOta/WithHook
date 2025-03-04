@@ -54,10 +54,6 @@ type Props = {
     isPublic: boolean,
     userId: string
   ) => Promise<{ newMemoryHook: MemoryHookWithUser; wordRec: Word }>;
-  saveToMyWords: (
-    meaning_id: number,
-    memory_hook_id: number | null
-  ) => Promise<void>;
   isMyWordSaved: boolean;
   initialSelectedMeaning: MeaningWithUser | null;
   initialSelectedMemoryHook: MemoryHookWithUser | null;
@@ -70,7 +66,6 @@ export default function WordDetailTabs({
   initialMemoryHooks,
   createMeaning,
   createMemoryHook,
-  saveToMyWords,
   isMyWordSaved,
   initialSelectedMeaning,
   initialSelectedMemoryHook,
@@ -102,6 +97,30 @@ export default function WordDetailTabs({
 
   const [deleteMeaningTarget, setDeleteMeaningTarget] = useState<MeaningWithUser | null>(null);
   const [deleteMemoryHookTarget, setDeleteMemoryHookTarget] = useState<MemoryHookWithUser | null>(null);
+
+  // 保存処理: API経由で実行
+  const saveToMyWords = async (
+    meaning_id: number,
+    memory_hook_id: number | null
+  ): Promise<void> => {
+    // APIを呼び出す
+    const res = await fetch("/api/myword/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        wordParam,
+        meaning_id, 
+        memory_hook_id 
+      }),
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || "保存に失敗しました");
+    }
+    
+    return res.json();
+  };
 
   const handleSaveToMyWords = async () => {
     if (!selectedMeaning) return;
@@ -515,12 +534,13 @@ function WordSettingTab({
       <button
         onClick={onAddToMyWords}
         className="mt-4 px-4 py-2 bg-green-500 text-white rounded"
+        disabled={!selectedMeaning}
       >
         {isMyWordSaved ? "My単語帳へ更新" : "My単語帳に追加"}
       </button>
       {addMessage && <p className="mt-2 text-green-600">{addMessage}</p>}
       <p className="text-gray-500 mt-2 text-sm">
-        ※意味が選択されていないと押せない仕様（将来実装予定）
+        ※意味が選択されていないと押せない仕様
       </p>
     </div>
   );
