@@ -23,9 +23,11 @@ export default function RecoverAccountPage() {
       if (res.ok) {
         setSuccess(true);
         toast.success("アカウントを復旧しました！");
+        
+        // 復旧後、リダイレクトを強制的に実行
+        // setTimeout だけでは不十分なので、window.location を使用
         setTimeout(() => {
-          // 復旧後、トップページにリダイレクト
-          router.push("/");
+          window.location.href = "/";
         }, 2000);
       } else {
         const data = await res.json();
@@ -61,9 +63,11 @@ export default function RecoverAccountPage() {
           </div>
         ) : (
           <>
-            <p className="mb-6 text-gray-600">
-              このアカウントは以前に削除されています。復旧して再度利用することができます。
-            </p>
+            <div className="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded">
+              <p>このアカウントは削除済みの状態です。</p>
+              <p>アカウントを復旧して再度利用するには「アカウントを復旧する」を押してください。</p>
+            </div>
+            
             <p className="mb-6 text-gray-600">
               復旧すると、あなたの単語や記憶hookなどのデータも全て復活します。
             </p>

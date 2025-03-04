@@ -42,12 +42,19 @@ export async function middleware(req: NextRequest) {
 
   // token が存在する場合、内部 API を呼んで削除状態をチェック
   if (token) {
-    const checkUrl = new URL("/api/user/check-deleted", req.url);
+    // 正しいAPI pathを指定
+    const checkUrl = new URL("/api/user/delete/check-deleted", req.url);
     try {
-      const response = await fetch(checkUrl.toString(), { cache: "no-store" });
+      const response = await fetch(checkUrl.toString(), { 
+        cache: "no-store",
+        headers: {
+          cookie: req.headers.get("cookie") || ""
+        }
+      });
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.includes("application/json")) {
         const data = await response.json();
+        console.log("Deleted status check result:", data);
         if (data.deleted) {
           // 削除済みアカウントの場合は復旧ページへリダイレクト
           return NextResponse.redirect(new URL("/recover-account", req.url));

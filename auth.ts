@@ -38,15 +38,15 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         
         if (!existingUser) {
           // 存在しなければ、新規ユーザー作成
-          const newUser = await prisma.user.create({
+          await prisma.user.create({
             data: {
               providerAccountId: providerAccountId,
               nickname: user.name || "",
               profile_image: user.image || "",
             },
           });
-          // 作成したレコードの内部ID（user_id）を user オブジェクトにセット
-          user.id = newUser.user_id;
+          // providerAccountId を一貫して使う
+          user.id = providerAccountId;
         } else {
           // 既存ユーザーがあれば、必要に応じて情報を更新
           // ただし、deleted_atの値は更新しない（復旧ページでの処理に任せる）
@@ -59,8 +59,8 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
               },
             });
           }
-          // 既存レコードの user_id をセット
-          user.id = existingUser.user_id;
+          // 一貫性を保つため providerAccountId を設定
+          user.id = providerAccountId;
         }
         return true;
       } catch (error) {
@@ -70,13 +70,13 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     },
     async jwt({ token, user, account }) {
       if (user) {
-        // signIn時に user.id に DB の user_id がセットされるのでそれを使用
-        token.sub = user.id ? user.id.toString() : token.sub;
+        // user.id は providerAccountId なので、そのまま token.sub に設定
+        token.sub = user.id || token.sub;
         token.name = user.name || "";
         token.email = user.email || "";
         token.picture = user.image || "";
       }
-      // もし account 情報があれば、providerAccountId を念のため上書き
+      // このコメントはもう必要ないが、一貫性のため providerAccountId を使い続ける
       if (account && account.providerAccountId) {
         token.sub = account.providerAccountId;
       }
