@@ -43,7 +43,9 @@ interface AggregatedResult {
 
 export default function WordSearchPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [aggregatedResults, setAggregatedResults] = useState<AggregatedResult[]>([]);
+  const [aggregatedResults, setAggregatedResults] = useState<
+    AggregatedResult[]
+  >([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedPos, setSelectedPos] = useState<string>(""); // 品詞フィルタ用の状態（空文字の場合は全て）
 
@@ -64,7 +66,9 @@ export default function WordSearchPage() {
       // Dictionary APIから完全一致検索を実施
       const dictResults: { word: string; pos: string }[] = [];
       const dictRes = await fetch(
-        `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(query)}`
+        `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(
+          query
+        )}`
       );
       if (dictRes.ok) {
         const data = (await dictRes.json()) as DictionaryEntry[];
@@ -81,7 +85,9 @@ export default function WordSearchPage() {
               if (PART_OF_SPEECH_MAP[posCode]) {
                 const word = entry.word || query;
                 // 同じ単語と品詞の重複を回避
-                if (!dictResults.some((r) => r.word === word && r.pos === posCode)) {
+                if (
+                  !dictResults.some((r) => r.word === word && r.pos === posCode)
+                ) {
                   dictResults.push({ word, pos: posCode });
                 }
               }
@@ -102,9 +108,18 @@ export default function WordSearchPage() {
           if (item.tags) {
             // item.tagsには複数の品詞コードが含まれる可能性がある
             item.tags.forEach((tag: string) => {
-              if (tag === "n" || tag === "v" || tag === "adj" || tag === "adv") {
+              if (
+                tag === "n" ||
+                tag === "v" ||
+                tag === "adj" ||
+                tag === "adv"
+              ) {
                 // 定義済みの品詞のみを対象とする
-                if (!suggestionResults.some((r) => r.word === word && r.pos === tag)) {
+                if (
+                  !suggestionResults.some(
+                    (r) => r.word === word && r.pos === tag
+                  )
+                ) {
                   suggestionResults.push({ word, pos: tag });
                 }
               }
@@ -116,7 +131,9 @@ export default function WordSearchPage() {
       // Dictionary APIの結果とDatamuse APIの結果を統合（重複を避ける）
       const combinedResults: { word: string; pos: string }[] = [...dictResults];
       suggestionResults.forEach((s) => {
-        if (!combinedResults.some((r) => r.word === s.word && r.pos === s.pos)) {
+        if (
+          !combinedResults.some((r) => r.word === s.word && r.pos === s.pos)
+        ) {
           combinedResults.push(s);
         }
       });
@@ -173,13 +190,26 @@ export default function WordSearchPage() {
       <h1 className="text-2xl font-bold mb-4">英単語検索</h1>
 
       {/* 検索フォームと品詞フィルタ */}
-      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-2 mb-6">
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col sm:flex-row items-center gap-2 mb-6"
+      >
         <input
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="単語を入力"
+          placeholder="英単語を入力"
           className="border border-gray-300 rounded px-4 py-2 w-full sm:w-64"
+          inputMode="search"
+          lang="en"
+          autoCapitalize="none"
+          autoComplete="off"
+          spellCheck="false"
+          enterKeyHint="search"
+          pattern="[A-Za-z\s]*"
+          title="英単語のみを入力してください"
+          // 日本語IMEをオフにするためのヒント
+          aria-autocomplete="none"
         />
         <button
           type="submit"
@@ -224,7 +254,10 @@ export default function WordSearchPage() {
           <tbody>
             {currentResults.length === 0 ? (
               <tr>
-                <td colSpan={3} className="border p-4 text-center text-gray-500">
+                <td
+                  colSpan={3}
+                  className="border p-4 text-center text-gray-500"
+                >
                   検索結果が見つかりません。
                 </td>
               </tr>
@@ -235,9 +268,13 @@ export default function WordSearchPage() {
                   className="hover:bg-blue-50 cursor-pointer"
                   onClick={() => router.push(`/words/${item.word}`)}
                 >
-                  <td className="border p-2 text-center">{indexOfFirst + index + 1}</td>
+                  <td className="border p-2 text-center">
+                    {indexOfFirst + index + 1}
+                  </td>
                   <td className="border p-2 whitespace-nowrap">
-                    {item.parts.map((pos) => `[${PART_OF_SPEECH_MAP[pos] ?? pos}]`).join("")}
+                    {item.parts
+                      .map((pos) => `[${PART_OF_SPEECH_MAP[pos] ?? pos}]`)
+                      .join("")}
                   </td>
                   <td className="border p-2">{item.word}</td>
                 </tr>
@@ -258,15 +295,22 @@ export default function WordSearchPage() {
             前へ
           </button>
           <span>
-            Page {currentPage} of {Math.ceil(filteredResults.length / RESULTS_PER_PAGE)}
+            Page {currentPage} of{" "}
+            {Math.ceil(filteredResults.length / RESULTS_PER_PAGE)}
           </span>
           <button
             onClick={() =>
               setCurrentPage((prev) =>
-                Math.min(prev + 1, Math.ceil(filteredResults.length / RESULTS_PER_PAGE))
+                Math.min(
+                  prev + 1,
+                  Math.ceil(filteredResults.length / RESULTS_PER_PAGE)
+                )
               )
             }
-            disabled={currentPage === Math.ceil(filteredResults.length / RESULTS_PER_PAGE)}
+            disabled={
+              currentPage ===
+              Math.ceil(filteredResults.length / RESULTS_PER_PAGE)
+            }
             className="px-3 py-1 border rounded disabled:opacity-50"
           >
             次へ

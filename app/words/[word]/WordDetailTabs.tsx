@@ -7,7 +7,7 @@ import type { Word, Meaning, MemoryHook } from "@prisma/client";
 import TextFormModal from "@/components/TextFormModal";
 import DeleteModal from "@/components/DeleteModal";
 import OperationButtons from "@/components/OperationButtons";
-import toast from "react-hot-toast";
+import toast, { Toaster } from "react-hot-toast";
 
 // 拡張型：作成者情報を含む Meaning と MemoryHook の型
 type MeaningWithUser = Meaning & {
@@ -110,83 +110,127 @@ export default function WordDetailTabs({
         selectedMeaning.meaning_id,
         selectedMemoryHook ? selectedMemoryHook.memory_hook_id : null
       );
+      // ここではトーストを表示せず、クエリパラメータを付けてリダイレクトするだけ
       router.push("/my-words?saved=1");
     } catch (err) {
       console.error(err);
-      alert(String(err));
+      toast.error("保存に失敗しました：" + String(err));
     }
   };
 
   // 更新処理：API経由
   const handleMeaningUpdate = async (text: string, isPublic: boolean) => {
-    const res = await fetch("/api/meaning/update", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ meaning_id: editMeaning?.meaning_id, meaningText: text, isPublic }),
-    });
-    if (!res.ok) {
-      throw new Error("意味の更新に失敗しました");
+    try {
+      const res = await fetch("/api/meaning/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ meaning_id: editMeaning?.meaning_id, meaningText: text, isPublic }),
+      });
+      if (!res.ok) {
+        throw new Error("意味の更新に失敗しました");
+      }
+      const data = await res.json();
+      setMeanings((prev) =>
+        prev.map((m) =>
+          m.meaning_id === data.updated.meaning_id ? { ...m, ...data.updated } : m
+        )
+      );
+      toast.success("保存しました！");
+      setEditMeaning(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "更新に失敗しました");
     }
-    const data = await res.json();
-    setMeanings((prev) =>
-      prev.map((m) =>
-        m.meaning_id === data.updated.meaning_id ? { ...m, ...data.updated } : m
-      )
-    );
-    toast.success("編集しました！");
-    setEditMeaning(null);
   };
 
   const handleMemoryHookUpdate = async (text: string, isPublic: boolean) => {
-    const res = await fetch("/api/memoryHook/update", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ memory_hook_id: editMemoryHook?.memory_hook_id, hookText: text, isPublic }),
-    });
-    if (!res.ok) {
-      throw new Error("記憶hookの更新に失敗しました");
+    try {
+      const res = await fetch("/api/memoryHook/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memory_hook_id: editMemoryHook?.memory_hook_id, hookText: text, isPublic }),
+      });
+      if (!res.ok) {
+        throw new Error("記憶hookの更新に失敗しました");
+      }
+      const data = await res.json();
+      setMemoryHooks((prev) =>
+        prev.map((h) =>
+          h.memory_hook_id === data.updated.memory_hook_id ? { ...h, ...data.updated } : h
+        )
+      );
+      toast.success("保存しました！");
+      setEditMemoryHook(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "更新に失敗しました");
     }
-    const data = await res.json();
-    setMemoryHooks((prev) =>
-      prev.map((h) =>
-        h.memory_hook_id === data.updated.memory_hook_id ? { ...h, ...data.updated } : h
-      )
-    );
-    toast.success("編集しました！");
-    setEditMemoryHook(null);
   };
 
   // 削除処理：API経由
   const handleDeleteMeaning = async (meaningId: number) => {
-    const res = await fetch("/api/meaning/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ meaning_id: meaningId }),
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || "意味の削除に失敗しました");
+    try {
+      const res = await fetch("/api/meaning/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ meaning_id: meaningId }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "意味の削除に失敗しました");
+      }
+      setMeanings((prev) => prev.filter((m) => m.meaning_id !== meaningId));
+      toast.success("削除しました！");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "削除に失敗しました");
     }
-    setMeanings((prev) => prev.filter((m) => m.meaning_id !== meaningId));
-    toast.success("削除しました！");
   };
 
   const handleDeleteMemoryHook = async (memoryHookId: number) => {
-    const res = await fetch("/api/memoryHook/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ memory_hook_id: memoryHookId }),
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || "記憶hookの削除に失敗しました");
+    try {
+      const res = await fetch("/api/memoryHook/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memory_hook_id: memoryHookId }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "記憶hookの削除に失敗しました");
+      }
+      setMemoryHooks((prev) => prev.filter((h) => h.memory_hook_id !== memoryHookId));
+      toast.success("削除しました！");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "削除に失敗しました");
     }
-    setMemoryHooks((prev) => prev.filter((h) => h.memory_hook_id !== memoryHookId));
-    toast.success("削除しました！");
+  };
+
+  // 意味の新規作成処理
+  const handleCreateMeaning = async (text: string, isPublic: boolean) => {
+    try {
+      const { newMeaning } = await createMeaning(wordParam, text, isPublic, userId);
+      setMeanings((prev) => sortOwnFirst([...prev, newMeaning], userId, "meaning_id"));
+      setSelectedMeaning(newMeaning);
+      toast.success("保存しました！");
+      setShowCreateMeaningModal(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "作成に失敗しました");
+    }
+  };
+
+  // 記憶hookの新規作成処理
+  const handleCreateMemoryHook = async (text: string, isPublic: boolean) => {
+    try {
+      const { newMemoryHook } = await createMemoryHook(wordParam, text, isPublic, userId);
+      setMemoryHooks((prev) => sortOwnFirst([...prev, newMemoryHook], userId, "memory_hook_id"));
+      setSelectedMemoryHook(newMemoryHook);
+      toast.success("保存しました！");
+      setShowCreateMemoryHookModal(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "作成に失敗しました");
+    }
   };
 
   return (
     <div className="mt-4">
+      <Toaster />
       <div className="flex gap-2 mb-4">
         <button
           className={`px-4 py-2 border rounded ${activeTab === "wordSetting" ? "bg-blue-200" : ""}`}
@@ -235,11 +279,7 @@ export default function WordDetailTabs({
               word={wordParam}
               placeholder="意味を入力"
               initialIsPublic={true}
-              onSave={async (text, isPublic) => {
-                const { newMeaning } = await createMeaning(wordParam, text, isPublic, userId);
-                setMeanings((prev) => sortOwnFirst([...prev, newMeaning], userId, "meaning_id"));
-                setSelectedMeaning(newMeaning);
-              }}
+              onSave={handleCreateMeaning}
               onClose={() => setShowCreateMeaningModal(false)}
             />
           )}
@@ -322,11 +362,7 @@ export default function WordDetailTabs({
               word={wordParam}
               placeholder="記憶hookを入力"
               initialIsPublic={true}
-              onSave={async (text, isPublic) => {
-                const { newMemoryHook } = await createMemoryHook(wordParam, text, isPublic, userId);
-                setMemoryHooks((prev) => sortOwnFirst([...prev, newMemoryHook], userId, "memory_hook_id"));
-                setSelectedMemoryHook(newMemoryHook);
-              }}
+              onSave={handleCreateMemoryHook}
               onClose={() => setShowCreateMemoryHookModal(false)}
             />
           )}
@@ -401,15 +437,8 @@ export default function WordDetailTabs({
         <DeleteModal
           message={`本当に「${wordParam}」の意味を削除しますか？`}
           onConfirm={async () => {
-            try {
-              await handleDeleteMeaning(deleteMeaningTarget.meaning_id);
-              setMeanings((prev) =>
-                prev.filter((m) => m.meaning_id !== deleteMeaningTarget.meaning_id)
-              );
-            } catch (error) {
-              console.log(error);
-              toast.error(error instanceof Error ? error.message : "削除に失敗しました");
-            }
+            await handleDeleteMeaning(deleteMeaningTarget.meaning_id);
+            setDeleteMeaningTarget(null);
           }}
           onClose={() => setDeleteMeaningTarget(null)}
         />
@@ -429,15 +458,8 @@ export default function WordDetailTabs({
         <DeleteModal
           message={`本当に「${wordParam}」の記憶hookを削除しますか？`}
           onConfirm={async () => {
-            try {
-              await handleDeleteMemoryHook(deleteMemoryHookTarget.memory_hook_id);
-              setMemoryHooks((prev) =>
-                prev.filter((h) => h.memory_hook_id !== deleteMemoryHookTarget.memory_hook_id)
-              );
-            } catch (error) {
-              console.log(error);
-              toast.error("削除に失敗しました");
-            }
+            await handleDeleteMemoryHook(deleteMemoryHookTarget.memory_hook_id);
+            setDeleteMemoryHookTarget(null);
           }}
           onClose={() => setDeleteMemoryHookTarget(null)}
         />
