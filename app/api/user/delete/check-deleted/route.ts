@@ -10,10 +10,11 @@ export const runtime = "nodejs";
 export async function GET(_request: Request) {
 /* eslint-enable @typescript-eslint/no-unused-vars */
   const session = await auth();
-  console.log("Check-deleted API called, session:", session?.user ? "Exists" : "None");
+  console.log("Check-deleted API called, session:", session?.user ? "Exists (id: " + session.user.id + ")" : "None");
   
   if (!session?.user) {
     // 未ログインの場合は削除状態の判定不要として false を返す
+    console.log("No session, returning deleted=false");
     return NextResponse.json({ deleted: false });
   }
 
@@ -26,12 +27,19 @@ export async function GET(_request: Request) {
       where: { providerAccountId: session.user.id },
     });
 
-    if (user && user.deleted_at) {
-      console.log("User found, deleted_at:", user.deleted_at);
+    if (!user) {
+      console.log("User not found with providerAccountId:", session.user.id);
+      return NextResponse.json({ deleted: false });
+    }
+
+    console.log(`User found: user_id=${user.user_id}, deleted_at=${user.deleted_at?.toISOString() || 'null'}`);
+
+    if (user.deleted_at) {
+      console.log("User is deleted, returning deleted=true");
       return NextResponse.json({ deleted: true });
     }
     
-    console.log("User not deleted or not found");
+    console.log("User not deleted, returning deleted=false");
     return NextResponse.json({ deleted: false });
   } catch (error) {
     console.error("Error in check-deleted API:", error);

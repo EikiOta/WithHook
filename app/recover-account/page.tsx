@@ -1,18 +1,32 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
 import toast, { Toaster } from "react-hot-toast";
 
 export default function RecoverAccountPage() {
   const [isRecovering, setIsRecovering] = useState(false);
   const [success, setSuccess] = useState(false);
-  const router = useRouter();
+  const [countdown, setCountdown] = useState(3);
+
+  // 成功時のカウントダウンとリダイレクト
+  useEffect(() => {
+    if (success && countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(prev => prev - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (success && countdown === 0) {
+      // カウントダウン完了後にトップページへリダイレクト
+      console.log("Redirecting to home page...");
+      window.location.replace("/");
+    }
+  }, [success, countdown]);
 
   const handleRecoverAccount = async () => {
     setIsRecovering(true);
     try {
+      console.log("Sending recovery request...");
       const res = await fetch("/api/user/recover", {
         method: "POST",
         headers: {
@@ -20,17 +34,17 @@ export default function RecoverAccountPage() {
         },
       });
 
+      console.log("Recovery API response status:", res.status);
+      
       if (res.ok) {
+        const data = await res.json();
+        console.log("Recovery API response:", data);
         setSuccess(true);
         toast.success("アカウントを復旧しました！");
-        
-        // 復旧後、リダイレクトを強制的に実行
-        // setTimeout だけでは不十分なので、window.location を使用
-        setTimeout(() => {
-          window.location.href = "/";
-        }, 2000);
+        // カウントダウン開始（useEffectでリダイレクト）
       } else {
         const data = await res.json();
+        console.error("Recovery API error:", data);
         toast.error(data.error || "アカウント復旧に失敗しました");
       }
     } catch (error) {
@@ -58,8 +72,14 @@ export default function RecoverAccountPage() {
               アカウントの復旧が完了しました！
             </div>
             <p className="mb-4 text-gray-600">
-              まもなくトップページに移動します...
+              {countdown}秒後にトップページに移動します...
             </p>
+            <button 
+              onClick={() => window.location.replace("/")}
+              className="px-4 py-2 bg-blue-500 text-white rounded"
+            >
+              今すぐトップページへ
+            </button>
           </div>
         ) : (
           <>

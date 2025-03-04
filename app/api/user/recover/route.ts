@@ -3,17 +3,23 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  log: ['query', 'info', 'warn', 'error'],
+});
 
 export async function POST() {
   // セッション情報を取得
   const session = await auth();
+  console.log("Recover API called, session:", session?.user ? "Exists" : "None");
+  
   if (!session || !session.user || !session.user.id) {
+    console.log("No session found in recover API");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   
   // providerAccountIdを取得
   const providerAccountId = session.user.id;
+  console.log("Attempting to recover user with providerAccountId:", providerAccountId);
 
   try {
     // deleted_atが設定されているユーザーを検索
@@ -25,56 +31,136 @@ export async function POST() {
     });
 
     if (!deletedUser) {
+      console.log("No deleted user found with providerAccountId:", providerAccountId);
       return NextResponse.json(
         { error: "復旧可能なアカウントが見つかりません" },
         { status: 404 }
       );
     }
 
+    console.log(`Found deleted user: user_id=${deletedUser.user_id}, deleted_at=${deletedUser.deleted_at?.toISOString()}`);
+
     // ユーザーの削除日時を取得
     const userDeletedAt = deletedUser.deleted_at;
+    if (!userDeletedAt) {
+      return NextResponse.json({ error: "Invalid deletion timestamp" }, { status: 400 });
+    }
 
-    // トランザクションを利用してユーザーおよび関連レコードを復旧
-    await prisma.$transaction([
-      // Userテーブルの復旧
-      prisma.user.update({
-        where: { user_id: deletedUser.user_id },
-        data: { deleted_at: null }
-      }),
-      // Meaningテーブルの復旧
-      // アカウント削除時に同時に削除された意味（削除日時が同じもの）のみ復旧
-      prisma.meaning.updateMany({
+    // 削除前のデータ数を確認
+    const deletedCounts = await Promise.all([
+      prisma.meaning.count({ 
         where: { 
-          user_id: deletedUser.user_id,
-          deleted_at: userDeletedAt
-        },
-        data: { deleted_at: null }
+          user_id: deletedUser.user_id, 
+          deleted_at: userDeletedAt 
+        } 
       }),
-      // MemoryHookテーブルの復旧
-      // アカウント削除時に同時に削除された記憶hook（削除日時が同じもの）のみ復旧
-      prisma.memoryHook.updateMany({
+      prisma.memoryHook.count({ 
         where: { 
-          user_id: deletedUser.user_id,
-          deleted_at: userDeletedAt
-        },
-        data: { deleted_at: null }
+          user_id: deletedUser.user_id, 
+          deleted_at: userDeletedAt 
+        } 
       }),
-      // UserWordテーブルの復旧
-      prisma.userWord.updateMany({
+      prisma.userWord.count({ 
         where: { 
-          user_id: deletedUser.user_id,
-          deleted_at: { not: null }
-        },
-        data: { deleted_at: null }
+          user_id: deletedUser.user_id, 
+          deleted_at: { not: null } 
+        } 
       })
     ]);
-
-    // 成功レスポンスの返却
-    return NextResponse.json({ 
-      success: true,
-      message: "アカウントと関連データの復旧が完了しました" 
-    });
     
+    console.log(`Records to recover - Meanings: ${deletedCounts[0]}, MemoryHooks: ${deletedCounts[1]}, UserWords: ${deletedCounts[2]}`);
+
+    try {
+      // トランザクションを利用してユーザーおよび関連レコードを復旧
+      const results = await prisma.$transaction([
+        // Userテーブルの復旧
+        prisma.user.update({
+          where: { user_id: deletedUser.user_id },
+          data: { deleted_at: null }
+        }),
+        // Meaningテーブルの復旧
+        prisma.meaning.updateMany({
+          where: { 
+            user_id: deletedUser.user_id,
+            deleted_at: userDeletedAt
+          },
+          data: { deleted_at: null }
+        }),
+        // MemoryHookテーブルの復旧
+        prisma.memoryHook.updateMany({
+          where: { 
+            user_id: deletedUser.user_id,
+            deleted_at: userDeletedAt
+          },
+          data: { deleted_at: null }
+        }),
+        // UserWordテーブルの復旧
+        prisma.userWord.updateMany({
+          where: { 
+            user_id: deletedUser.user_id,
+            deleted_at: { not: null }
+          },
+          data: { deleted_at: null }
+        })
+      ]);
+
+      console.log("Recovery transaction completed. Results:", JSON.stringify(results));
+      
+      // 復旧後のデータ数を確認
+      const recoveredCounts = await Promise.all([
+        prisma.meaning.count({ 
+          where: { 
+            user_id: deletedUser.user_id, 
+            deleted_at: null 
+          } 
+        }),
+        prisma.memoryHook.count({ 
+          where: { 
+            user_id: deletedUser.user_id, 
+            deleted_at: null 
+          } 
+        }),
+        prisma.userWord.count({ 
+          where: { 
+            user_id: deletedUser.user_id, 
+            deleted_at: null 
+          } 
+        })
+      ]);
+      
+      console.log(`After recovery - Active Meanings: ${recoveredCounts[0]}, Active MemoryHooks: ${recoveredCounts[1]}, Active UserWords: ${recoveredCounts[2]}`);
+      
+      // 再確認: ユーザーが正しく復旧されたか確認
+      const verifyUser = await prisma.user.findUnique({
+        where: { user_id: deletedUser.user_id }
+      });
+      
+      console.log("Verification after recovery:", verifyUser ? 
+        `User exists, deleted_at=${verifyUser.deleted_at?.toISOString() || 'null'}` : 
+        "User not found");
+      
+      if (verifyUser && verifyUser.deleted_at !== null) {
+        console.log("WARNING: User still marked as deleted after recovery!");
+      }
+
+      // 成功レスポンスの返却
+      return NextResponse.json({ 
+        success: true,
+        message: "アカウントと関連データの復旧が完了しました",
+        recoveredCounts: {
+          user: verifyUser && verifyUser.deleted_at === null ? 1 : 0,
+          meanings: results[1].count,
+          memoryHooks: results[2].count,
+          userWords: results[3].count
+        }
+      });
+    } catch (txError) {
+      console.error("Transaction error:", txError);
+      return NextResponse.json(
+        { error: "データベーストランザクションに失敗しました" },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error("Error during account recovery:", error);
     return NextResponse.json(
