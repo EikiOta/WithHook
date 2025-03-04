@@ -30,7 +30,6 @@ export async function POST(request: Request) {
         memory_hook: newMemoryHook,
       },
     });
-    
     return NextResponse.json({ deleted, message: "削除しました" });
   } catch (error) {
     console.error(error);
