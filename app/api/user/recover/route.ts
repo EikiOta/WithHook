@@ -47,83 +47,119 @@ export async function POST() {
       return NextResponse.json({ error: "Invalid deletion timestamp" }, { status: 400 });
     }
 
-    // 削除データの数を確認
-    const [deletedMeanings, deletedMemoryHooks, deletedUserWords] = await Promise.all([
-      prisma.meaning.count({ 
-        where: { 
-          user_id: userId, 
-          deleted_at: userDeletedAt 
-        } 
-      }),
-      prisma.memoryHook.count({ 
-        where: { 
-          user_id: userId, 
-          deleted_at: userDeletedAt 
-        } 
-      }),
-      prisma.userWord.count({ 
-        where: { 
-          user_id: userId, 
-          deleted_at: userDeletedAt 
-        } 
-      })
-    ]);
+    // 削除された意味と記憶hookを取得（テキスト復元のため）
+    const deletedMeanings = await prisma.meaning.findMany({
+      where: { 
+        user_id: providerAccountId,
+        deleted_at: userDeletedAt
+      }
+    });
     
-    console.log(`Records to recover - Meanings: ${deletedMeanings}, MemoryHooks: ${deletedMemoryHooks}, UserWords: ${deletedUserWords}`);
+    const deletedMemoryHooks = await prisma.memoryHook.findMany({
+      where: { 
+        user_id: providerAccountId,
+        deleted_at: userDeletedAt
+      }
+    });
+    
+    console.log(`Found deleted data: Meanings=${deletedMeanings.length}, MemoryHooks=${deletedMemoryHooks.length}`);
+
+    // 削除されたMy単語帳の数を確認
+    const deletedUserWords = await prisma.userWord.count({
+      where: { 
+        user_id: userId,
+        deleted_at: userDeletedAt
+      }
+    });
+    
+    console.log(`Records to recover - UserWords: ${deletedUserWords}`);
 
     try {
       // トランザクションを利用してユーザーおよび関連レコードを復旧
-      const results = await prisma.$transaction([
+      await prisma.$transaction(async (tx) => {
         // Userテーブルの復旧
-        prisma.user.update({
+        await tx.user.update({
           where: { user_id: userId },
           data: { deleted_at: null }
-        }),
-        // Meaningテーブルの復旧
-        prisma.meaning.updateMany({
+        });
+        
+        // 各Meaningを個別に復旧（テキスト内容も元に戻す）
+        let meaningCount = 0;
+        for (const meaning of deletedMeanings) {
+          // 削除メッセージから元のテキストを抽出
+          let originalText = meaning.meaning;
+          const prefix = "この意味はユーザによって削除されました（元の意味: ";
+          if (originalText.startsWith(prefix)) {
+            originalText = originalText.substring(prefix.length, originalText.length - 1); // 末尾の "）" を除去
+          }
+          
+          await tx.meaning.update({
+            where: { meaning_id: meaning.meaning_id },
+            data: { 
+              deleted_at: null,
+              meaning: originalText
+            }
+          });
+          meaningCount++;
+        }
+        console.log(`Restored ${meaningCount} meanings with original text`);
+        
+        // 各MemoryHookを個別に復旧（テキスト内容も元に戻す）- 意味と同様の処理
+        let hookCount = 0;
+        for (const hook of deletedMemoryHooks) {
+          // 削除メッセージから元のテキストを抽出
+          let originalText = hook.memory_hook;
+          const prefix = "この記憶hookはユーザによって削除されました（元の記憶hook: ";
+          if (originalText.startsWith(prefix)) {
+            originalText = originalText.substring(prefix.length, originalText.length - 1); // 末尾の "）" を除去
+          }
+          
+          await tx.memoryHook.update({
+            where: { memory_hook_id: hook.memory_hook_id },
+            data: { 
+              deleted_at: null,
+              memory_hook: originalText
+            }
+          });
+          hookCount++;
+        }
+        console.log(`Restored ${hookCount} memory hooks with original text`);
+        
+        // UserWordテーブルの復旧 (バルク更新)
+        const wordUpdate = await tx.userWord.updateMany({
           where: { 
             user_id: userId,
             deleted_at: userDeletedAt
           },
           data: { deleted_at: null }
-        }),
-        // MemoryHookテーブルの復旧
-        prisma.memoryHook.updateMany({
-          where: { 
-            user_id: userId,
-            deleted_at: userDeletedAt
-          },
-          data: { deleted_at: null }
-        }),
-        // UserWordテーブルの復旧
-        prisma.userWord.updateMany({
-          where: { 
-            user_id: userId,
-            deleted_at: userDeletedAt
-          },
-          data: { deleted_at: null }
-        })
-      ]);
-
-      console.log("Recovery transaction completed. Results:", JSON.stringify(results));
+        });
+        console.log(`Restored ${wordUpdate.count} user words`);
+        
+        return {
+          user: 1,
+          meanings: meaningCount,
+          memoryHooks: hookCount,
+          userWords: wordUpdate.count
+        };
+      });
       
       // 復旧後のデータ数を確認
       const [activeAfterMeanings, activeAfterMemoryHooks, activeAfterUserWords] = await Promise.all([
         prisma.meaning.count({ 
           where: { 
-            user_id: userId, 
+            user_id: providerAccountId,
             deleted_at: null 
           } 
         }),
         prisma.memoryHook.count({ 
           where: { 
-            user_id: userId, 
+            user_id: providerAccountId,
             deleted_at: null 
           } 
         }),
         prisma.userWord.count({ 
           where: { 
-            user_id: userId, 
+            user_id: userId,
             deleted_at: null 
           } 
         })
@@ -139,20 +175,16 @@ export async function POST() {
       console.log("Verification after recovery:", verifyUser ? 
         `User exists, deleted_at=${verifyUser.deleted_at?.toISOString() || 'null'}` : 
         "User not found");
-      
-      if (verifyUser && verifyUser.deleted_at !== null) {
-        console.log("WARNING: User still marked as deleted after recovery!");
-      }
 
       // 成功レスポンスの返却
       return NextResponse.json({ 
         success: true,
         message: "アカウントと関連データの復旧が完了しました",
         recoveredCounts: {
-          user: verifyUser && verifyUser.deleted_at === null ? 1 : 0,
-          meanings: results[1].count,
-          memoryHooks: results[2].count,
-          userWords: results[3].count
+          user: 1,
+          meanings: activeAfterMeanings,
+          memoryHooks: activeAfterMemoryHooks,
+          userWords: activeAfterUserWords
         }
       });
     } catch (txError) {

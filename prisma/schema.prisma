@@ -18,10 +18,12 @@ model User {
   updatedAt         DateTime  @updatedAt
   deleted_at        DateTime? // 論理削除日時（NULLなら有効）
 
-  // 既存のリレーション
-  meanings     Meaning[]
-  memoryHooks  MemoryHook[]
+  // UserWordはuser_idで正しくリレーション
   userWords    UserWord[]
+
+  // 以下は実際にはproviderAccountIdでリレーションしている
+  meaningsByProviderId     Meaning[]     @relation("MeaningsByProviderId")
+  memoryHooksByProviderId  MemoryHook[]  @relation("MemoryHooksByProviderId")
 
   @@map("users")
 }
@@ -42,7 +44,7 @@ model Word {
 model Meaning {
   meaning_id Int      @id @default(autoincrement())
   word_id    Int
-  user_id    String
+  user_id    String   // 実際にはproviderAccountIdが格納されている
   meaning    String
   is_public  Boolean  @default(false)
   created_at DateTime @default(now())
@@ -51,7 +53,8 @@ model Meaning {
 
   // リレーション
   word      Word @relation(fields: [word_id], references: [word_id])
-  user      User @relation(fields: [user_id], references: [user_id])
+  // 実際にはproviderAccountIdを参照するようにリレーションを変更
+  user      User @relation("MeaningsByProviderId", fields: [user_id], references: [providerAccountId])
   userWords UserWord[]
 
   @@map("meanings")
@@ -60,7 +63,7 @@ model Meaning {
 model MemoryHook {
   memory_hook_id Int      @id @default(autoincrement())
   word_id        Int
-  user_id        String
+  user_id        String   // 実際にはproviderAccountIdが格納されている
   memory_hook    String
   is_public      Boolean  @default(false)
   created_at     DateTime @default(now())
@@ -69,7 +72,8 @@ model MemoryHook {
 
   // リレーション
   word      Word @relation(fields: [word_id], references: [word_id])
-  user      User @relation(fields: [user_id], references: [user_id])
+  // 実際にはproviderAccountIdを参照するようにリレーションを変更
+  user      User @relation("MemoryHooksByProviderId", fields: [user_id], references: [providerAccountId])
   userWords UserWord[]
 
   @@map("memory_hooks")
@@ -85,7 +89,7 @@ model UserWord {
   updated_at     DateTime    @updatedAt
   deleted_at     DateTime?   // 論理削除日時
 
-  // リレーション
+  // リレーション - こちらは正しくuser_idを参照
   user       User        @relation(fields: [user_id], references: [user_id])
   word       Word        @relation(fields: [word_id], references: [word_id])
   meaning    Meaning     @relation(fields: [meaning_id], references: [meaning_id])
