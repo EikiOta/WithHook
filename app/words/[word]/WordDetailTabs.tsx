@@ -110,7 +110,8 @@ export default function WordDetailTabs({
         selectedMeaning.meaning_id,
         selectedMemoryHook ? selectedMemoryHook.memory_hook_id : null
       );
-      // ここではトーストを表示せず、クエリパラメータを付けてリダイレクトするだけ
+      
+      // 成功時のトースト表示はここでは行わず、パラメータ付きでリダイレクトするだけ
       router.push("/my-words?saved=1");
     } catch (err) {
       console.error(err);

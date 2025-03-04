@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import DeleteModal from "@/components/DeleteModal";
@@ -24,7 +24,7 @@ export default function MyWordsTable({
   const [data, setData] = useState<MyWordItem[]>(initialData);
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<MyWordItem | null>(null);
-  const [toastShown, setToastShown] = useState(false); // トーストの表示状態を追跡
+  const toastShownRef = useRef(false); // Refを使用してレンダー間でも状態を保持
 
   const itemsPerPage = 5;
   const totalPages = Math.ceil(data.length / itemsPerPage);
@@ -62,14 +62,14 @@ export default function MyWordsTable({
 
   // クエリパラメータ "saved" があればトースト表示し、パラメータを除去
   useEffect(() => {
-    if (searchParams.get("saved") === "1" && !toastShown) {
-      // まだトーストが表示されていない場合のみ表示
+    if (searchParams.get("saved") === "1" && !toastShownRef.current) {
+      // まだトースト表示されていない場合のみ表示（refを使用）
       toast.success("保存しました！");
-      setToastShown(true); // トースト表示済みにする
+      toastShownRef.current = true; // refを使って状態を追跡
       // パラメータを削除して履歴を残さない（スクロール位置は維持）
       router.replace("/my-words", { scroll: false });
     }
-  }, [searchParams, router, toastShown]);
+  }, [searchParams, router]);
 
   return (
     <div className="bg-white shadow-md rounded p-4 overflow-x-auto">
