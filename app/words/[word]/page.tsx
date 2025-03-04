@@ -1,6 +1,6 @@
 // words/[word]/page.tsx
 import {PrismaClient } from "@prisma/client";
-import type { Meaning, MemoryHook, Word, UserWord } from "@prisma/client";
+import type { Meaning, MemoryHook } from "@prisma/client";
 import WordDetailTabs from "./WordDetailTabs";
 import { auth } from "@/auth";
 
@@ -63,7 +63,7 @@ export default async function WordDetailPage({
   }
 
   // My単語帳(user_words)への登録済みレコードを取得（あれば）
-  let myWordRecord: UserWord | null = null;
+  let myWordRecord = null;
   if (wordRecord) {
     myWordRecord = await prisma.userWord.findFirst({
       where: {
@@ -72,70 +72,6 @@ export default async function WordDetailPage({
         deleted_at: null, // 削除されていないもの
       },
     });
-  }
-
-  async function createMeaningAction(
-    wordInput: string,
-    meaningText: string,
-    isPublic: boolean,
-    userId: string
-  ): Promise<{
-    newMeaning: Meaning & { user: { profile_image: string | null; nickname: string | null } };
-    wordRec: Word;
-  }> {
-    "use server";
-    let wordRec = await prisma.word.findUnique({ where: { word: wordInput } });
-    if (!wordRec) {
-      wordRec = await prisma.word.create({ data: { word: wordInput } });
-    }
-    const existing = await prisma.meaning.findFirst({
-      where: { word_id: wordRec.word_id, user_id: userId, deleted_at: null },
-    });
-    if (existing) {
-      throw new Error("既にあなたはこの単語の意味を登録済みです。");
-    }
-    await prisma.meaning.create({
-      data: {
-        word_id: wordRec.word_id,
-        user_id: userId,
-        meaning: meaningText,
-        is_public: isPublic,
-      },
-    });
-    const newMeaning = await prisma.meaning.findFirst({
-      where: { word_id: wordRec.word_id, user_id: userId, meaning: meaningText },
-      include: { user: true },
-    });
-    return { newMeaning: newMeaning! as Meaning & { user: { profile_image: string | null; nickname: string | null } }, wordRec };
-  }
-
-  async function createMemoryHookAction(
-    wordInput: string,
-    hookText: string,
-    isPublic: boolean,
-    userId: string
-  ): Promise<{
-    newMemoryHook: MemoryHook & { user: { profile_image: string | null; nickname: string | null } };
-    wordRec: Word;
-  }> {
-    "use server";
-    let wordRec = await prisma.word.findUnique({ where: { word: wordInput } });
-    if (!wordRec) {
-      wordRec = await prisma.word.create({ data: { word: wordInput } });
-    }
-    await prisma.memoryHook.create({
-      data: {
-        word_id: wordRec.word_id,
-        user_id: userId,
-        memory_hook: hookText,
-        is_public: isPublic,
-      },
-    });
-    const newMemoryHook = await prisma.memoryHook.findFirst({
-      where: { word_id: wordRec.word_id, user_id: userId, memory_hook: hookText },
-      include: { user: true },
-    });
-    return { newMemoryHook: newMemoryHook! as MemoryHook & { user: { profile_image: string | null; nickname: string | null } }, wordRec };
   }
 
   // 初期選択値は、user情報を持つ型にキャストして渡す
@@ -166,8 +102,6 @@ export default async function WordDetailPage({
         initialMemoryHooks={
           memoryHooks as (MemoryHook & { user: { profile_image: string | null; nickname: string | null } })[]
         }
-        createMeaning={createMeaningAction}
-        createMemoryHook={createMemoryHookAction}
         isMyWordSaved={Boolean(myWordRecord)}
         initialSelectedMeaning={initialSelectedMeaning}
         initialSelectedMemoryHook={initialSelectedMemoryHook}

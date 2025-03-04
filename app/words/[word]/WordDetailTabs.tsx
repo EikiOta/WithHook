@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Word, Meaning, MemoryHook } from "@prisma/client";
+import type { Meaning, MemoryHook } from "@prisma/client";
 import TextFormModal from "@/components/TextFormModal";
 import DeleteModal from "@/components/DeleteModal";
 import OperationButtons from "@/components/OperationButtons";
@@ -42,18 +42,6 @@ type Props = {
   wordParam: string;
   initialMeanings: MeaningWithUser[];
   initialMemoryHooks: MemoryHookWithUser[];
-  createMeaning: (
-    wordInput: string,
-    meaningText: string,
-    isPublic: boolean,
-    userId: string
-  ) => Promise<{ newMeaning: MeaningWithUser; wordRec: Word }>;
-  createMemoryHook: (
-    wordInput: string,
-    hookText: string,
-    isPublic: boolean,
-    userId: string
-  ) => Promise<{ newMemoryHook: MemoryHookWithUser; wordRec: Word }>;
   isMyWordSaved: boolean;
   initialSelectedMeaning: MeaningWithUser | null;
   initialSelectedMemoryHook: MemoryHookWithUser | null;
@@ -64,8 +52,6 @@ export default function WordDetailTabs({
   wordParam,
   initialMeanings,
   initialMemoryHooks,
-  createMeaning,
-  createMemoryHook,
   isMyWordSaved,
   initialSelectedMeaning,
   initialSelectedMemoryHook,
@@ -222,12 +208,27 @@ export default function WordDetailTabs({
     }
   };
 
-  // 意味の新規作成処理
+  // 意味の新規作成処理 - API直接呼び出しに変更
   const handleCreateMeaning = async (text: string, isPublic: boolean) => {
     try {
-      const { newMeaning } = await createMeaning(wordParam, text, isPublic, userId);
-      setMeanings((prev) => sortOwnFirst([...prev, newMeaning], userId, "meaning_id"));
-      setSelectedMeaning(newMeaning);
+      const res = await fetch("/api/meaning/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          wordText: wordParam, 
+          meaningText: text, 
+          isPublic 
+        }),
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "意味の作成に失敗しました");
+      }
+      
+      const data = await res.json();
+      setMeanings((prev) => sortOwnFirst([...prev, data.newMeaning], userId, "meaning_id"));
+      setSelectedMeaning(data.newMeaning);
       toast.success("保存しました！");
       setShowCreateMeaningModal(false);
     } catch (error) {
@@ -235,12 +236,27 @@ export default function WordDetailTabs({
     }
   };
 
-  // 記憶hookの新規作成処理
+  // 記憶hookの新規作成処理 - API直接呼び出しに変更
   const handleCreateMemoryHook = async (text: string, isPublic: boolean) => {
     try {
-      const { newMemoryHook } = await createMemoryHook(wordParam, text, isPublic, userId);
-      setMemoryHooks((prev) => sortOwnFirst([...prev, newMemoryHook], userId, "memory_hook_id"));
-      setSelectedMemoryHook(newMemoryHook);
+      const res = await fetch("/api/memoryHook/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          wordText: wordParam, 
+          hookText: text, 
+          isPublic 
+        }),
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "記憶hookの作成に失敗しました");
+      }
+      
+      const data = await res.json();
+      setMemoryHooks((prev) => sortOwnFirst([...prev, data.newMemoryHook], userId, "memory_hook_id"));
+      setSelectedMemoryHook(data.newMemoryHook);
       toast.success("保存しました！");
       setShowCreateMemoryHookModal(false);
     } catch (error) {
