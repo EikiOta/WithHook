@@ -30,6 +30,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // 復旧ページへのアクセスを許可
+  if (pathname === "/recover-account") {
+    return NextResponse.next();
+  }
+
   // 未ログインの場合は /login へリダイレクト
   if (!token && pathname !== "/login") {
     return NextResponse.redirect(new URL("/login", req.url));
@@ -44,7 +49,8 @@ export async function middleware(req: NextRequest) {
       if (contentType && contentType.includes("application/json")) {
         const data = await response.json();
         if (data.deleted) {
-          return NextResponse.redirect(new URL("/login", req.url));
+          // 削除済みアカウントの場合は復旧ページへリダイレクト
+          return NextResponse.redirect(new URL("/recover-account", req.url));
         }
       } else {
         console.error("Unexpected content type from check-deleted API:", contentType);

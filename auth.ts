@@ -35,6 +35,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         const existingUser = await prisma.user.findUnique({
           where: { providerAccountId: providerAccountId },
         });
+        
         if (!existingUser) {
           // 存在しなければ、新規ユーザー作成
           const newUser = await prisma.user.create({
@@ -48,13 +49,16 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           user.id = newUser.user_id;
         } else {
           // 既存ユーザーがあれば、必要に応じて情報を更新
-          await prisma.user.update({
-            where: { providerAccountId: providerAccountId },
-            data: {
-              nickname: user.name || "",
-              profile_image: user.image || "",
-            },
-          });
+          // ただし、deleted_atの値は更新しない（復旧ページでの処理に任せる）
+          if (!existingUser.deleted_at) {
+            await prisma.user.update({
+              where: { providerAccountId: providerAccountId },
+              data: {
+                nickname: user.name || "",
+                profile_image: user.image || "",
+              },
+            });
+          }
           // 既存レコードの user_id をセット
           user.id = existingUser.user_id;
         }

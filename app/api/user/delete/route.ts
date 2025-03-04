@@ -16,31 +16,30 @@ export async function POST(_request: Request) {
   const now = new Date();
 
   try {
-    // トランザクションを利用してユーザーおよび関連レコードを論理削除
+    // トランザクションを利用して、以下を実施する：
+    // 1. ユーザーテーブルの該当ユーザーの deleted_at を now に更新
+    // 2. meanings テーブル：user_id が一致かつ deleted_at が null のものに now を設定
+    // 3. memory_hooks テーブル：同様に更新
+    // 4. user_words テーブル：同様に更新
     await prisma.$transaction([
-      // Userテーブルの論理削除
       prisma.user.update({
         where: { user_id: userId },
         data: { deleted_at: now }
       }),
-      // Meaningテーブルの論理削除（対象ユーザーのレコードすべて）
       prisma.meaning.updateMany({
-        where: { user_id: userId },
+        where: { user_id: userId, deleted_at: null },
         data: { deleted_at: now }
       }),
-      // MemoryHookテーブルの論理削除
       prisma.memoryHook.updateMany({
-        where: { user_id: userId },
+        where: { user_id: userId, deleted_at: null },
         data: { deleted_at: now }
       }),
-      // UserWordテーブルの論理削除
       prisma.userWord.updateMany({
-        where: { user_id: userId },
+        where: { user_id: userId, deleted_at: null },
         data: { deleted_at: now }
       })
     ]);
 
-    // 成功レスポンスの返却
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error during account deletion:", error);
