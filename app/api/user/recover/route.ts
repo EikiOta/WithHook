@@ -17,28 +17,27 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   
-  // providerAccountIdを取得
-  const providerAccountId = session.user.id;
-  console.log("Attempting to recover user with providerAccountId:", providerAccountId);
+  // 内部user_idを取得
+  const userId = session.user.id;
+  console.log("Attempting to recover user with user_id:", userId);
 
   try {
     // deleted_atが設定されているユーザーを検索
     const deletedUser = await prisma.user.findFirst({
       where: {
-        providerAccountId: providerAccountId,
+        user_id: userId,
         deleted_at: { not: null }
       },
     });
 
     if (!deletedUser) {
-      console.log("No deleted user found with providerAccountId:", providerAccountId);
+      console.log("No deleted user found with user_id:", userId);
       return NextResponse.json(
         { error: "復旧可能なアカウントが見つかりません" },
         { status: 404 }
       );
     }
 
-    const userId = deletedUser.user_id;
     console.log(`Found deleted user: user_id=${userId}, deleted_at=${deletedUser.deleted_at?.toISOString()}`);
 
     // ユーザーの削除日時を取得
@@ -50,14 +49,14 @@ export async function POST() {
     // 削除された意味と記憶hookを取得（テキスト復元のため）
     const deletedMeanings = await prisma.meaning.findMany({
       where: { 
-        user_id: providerAccountId,
+        user_id: userId,
         deleted_at: userDeletedAt
       }
     });
     
     const deletedMemoryHooks = await prisma.memoryHook.findMany({
       where: { 
-        user_id: providerAccountId,
+        user_id: userId,
         deleted_at: userDeletedAt
       }
     });
@@ -147,13 +146,13 @@ export async function POST() {
       const [activeAfterMeanings, activeAfterMemoryHooks, activeAfterUserWords] = await Promise.all([
         prisma.meaning.count({ 
           where: { 
-            user_id: providerAccountId,
+            user_id: userId,
             deleted_at: null 
           } 
         }),
         prisma.memoryHook.count({ 
           where: { 
-            user_id: providerAccountId,
+            user_id: userId,
             deleted_at: null 
           } 
         }),

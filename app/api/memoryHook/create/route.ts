@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
     }
-    const userId = session.user.id;
+    const userId = session.user.id; // これで内部的なuser_idが取得される
     
     // Parse request body
     const { wordText, hookText, isPublic } = await request.json();

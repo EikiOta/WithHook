@@ -11,34 +11,33 @@ export async function POST(_request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // providerAccountIdとしてセッションからユーザーIDを取得
-  const providerAccountId = session.user.id;
+  // 内部user_idをセッションから取得
+  const userId = session.user.id;
   const now = new Date();
 
   try {
-    // providerAccountIdからユーザーを検索
+    // user_idでユーザーを検索
     const user = await prisma.user.findUnique({
-      where: { providerAccountId }
+      where: { user_id: userId }
     });
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const userId = user.user_id;
-    console.log(`Deleting user with user_id=${userId}, providerAccountId=${providerAccountId}`);
+    console.log(`Deleting user with user_id=${userId}, providerAccountId=${user.providerAccountId || 'N/A'}`);
 
     // アクティブな意味と記憶hookを取得して、テキスト内容を更新する処理のため
     const activeMeanings = await prisma.meaning.findMany({
       where: { 
-        user_id: providerAccountId,
+        user_id: userId,
         deleted_at: null
       }
     });
     
     const activeMemoryHooks = await prisma.memoryHook.findMany({
       where: { 
-        user_id: providerAccountId,
+        user_id: userId,
         deleted_at: null
       }
     });

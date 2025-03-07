@@ -13,9 +13,10 @@ export async function GET() {
   }
   
   try {
-    // providerAccountId からユーザーを検索
+    // user_id からユーザーを検索
+    const userId = session.user.id;
     const user = await prisma.user.findUnique({
-      where: { providerAccountId: session.user.id },
+      where: { user_id: userId },
     });
 
     if (!user) {
@@ -35,19 +36,19 @@ export async function GET() {
       deletedUserWords
     ] = await Promise.all([
       // 合計
-      prisma.meaning.count({ where: { user_id: user.user_id } }),
-      prisma.memoryHook.count({ where: { user_id: user.user_id } }),
-      prisma.userWord.count({ where: { user_id: user.user_id } }),
+      prisma.meaning.count({ where: { user_id: userId } }),
+      prisma.memoryHook.count({ where: { user_id: userId } }),
+      prisma.userWord.count({ where: { user_id: userId } }),
       
       // アクティブ（deleted_at = null）
-      prisma.meaning.count({ where: { user_id: user.user_id, deleted_at: null } }),
-      prisma.memoryHook.count({ where: { user_id: user.user_id, deleted_at: null } }),
-      prisma.userWord.count({ where: { user_id: user.user_id, deleted_at: null } }),
+      prisma.meaning.count({ where: { user_id: userId, deleted_at: null } }),
+      prisma.memoryHook.count({ where: { user_id: userId, deleted_at: null } }),
+      prisma.userWord.count({ where: { user_id: userId, deleted_at: null } }),
       
       // 削除済み（deleted_at != null）
-      prisma.meaning.count({ where: { user_id: user.user_id, deleted_at: { not: null } } }),
-      prisma.memoryHook.count({ where: { user_id: user.user_id, deleted_at: { not: null } } }),
-      prisma.userWord.count({ where: { user_id: user.user_id, deleted_at: { not: null } } })
+      prisma.meaning.count({ where: { user_id: userId, deleted_at: { not: null } } }),
+      prisma.memoryHook.count({ where: { user_id: userId, deleted_at: { not: null } } }),
+      prisma.userWord.count({ where: { user_id: userId, deleted_at: { not: null } } })
     ]);
 
     return NextResponse.json({

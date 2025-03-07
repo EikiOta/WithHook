@@ -18,17 +18,18 @@ export async function GET(_request: Request) {
     return NextResponse.json({ deleted: false });
   }
 
-  // session.user.id はプロバイダーIDとして扱う
-  console.log("User ID from session:", session.user.id);
+  // session.user.idは内部user_idとして扱う
+  const userId = session.user.id;
+  console.log("User ID from session:", userId);
   
   try {
-    // providerAccountId でユーザー検索
+    // user_idでユーザー検索
     const user = await prisma.user.findUnique({
-      where: { providerAccountId: session.user.id },
+      where: { user_id: userId },
     });
 
     if (!user) {
-      console.log("User not found with providerAccountId:", session.user.id);
+      console.log("User not found with user_id:", userId);
       return NextResponse.json({ deleted: false });
     }
 

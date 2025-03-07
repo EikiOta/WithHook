@@ -38,29 +38,29 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         
         if (!existingUser) {
           // 存在しなければ、新規ユーザー作成
-          await prisma.user.create({
+          const newUser = await prisma.user.create({
             data: {
               providerAccountId: providerAccountId,
               nickname: user.name || "",
               profile_image: user.image || "",
             },
           });
-          // providerAccountId を一貫して使う
-          user.id = providerAccountId;
+          // 内部IDをセットする
+          user.id = newUser.user_id;
         } else {
-          // 既存ユーザーがあれば、必要に応じて情報を更新
-          // ただし、deleted_atの値は更新しない（復旧ページでの処理に任せる）
+          // 既存ユーザーがあれば、内部IDをセットする
+          user.id = existingUser.user_id;
+          
+          // 必要に応じて情報を更新（削除済みでなければ）
           if (!existingUser.deleted_at) {
             await prisma.user.update({
-              where: { providerAccountId: providerAccountId },
+              where: { user_id: existingUser.user_id },
               data: {
                 nickname: user.name || "",
                 profile_image: user.image || "",
               },
             });
           }
-          // 一貫性を保つため providerAccountId を設定
-          user.id = providerAccountId;
         }
         return true;
       } catch (error) {
@@ -68,24 +68,20 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         return false;
       }
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }) {
       if (user) {
-        // user.id は providerAccountId なので、そのまま token.sub に設定
+        // userオブジェクトがある場合は認証時なので、内部IDをtokenに設定
         token.sub = user.id || token.sub;
         token.name = user.name || "";
         token.email = user.email || "";
         token.picture = user.image || "";
-      }
-      // このコメントはもう必要ないが、一貫性のため providerAccountId を使い続ける
-      if (account && account.providerAccountId) {
-        token.sub = account.providerAccountId;
       }
       return token;
     },
     async session({ session, token }) {
       session.user = {
         ...session.user,
-        id: token.sub ?? "",
+        id: token.sub ?? "", // このidが内部で生成されたuser_idになる
         name: token.name ?? "",
         email: token.email ?? "",
         image: token.picture ?? "",
