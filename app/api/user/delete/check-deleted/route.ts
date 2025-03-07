@@ -44,6 +44,16 @@ export async function GET(_request: Request) {
     return NextResponse.json({ deleted: false });
   } catch (error) {
     console.error("Error in check-deleted API:", error);
-    return NextResponse.json({ deleted: false, error: String(error) });
+    
+    // エラーオブジェクトの安全な処理
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : "Unknown error";
+      
+    // 明示的に正しい形式のオブジェクトを返す
+    return NextResponse.json({ 
+      deleted: false, 
+      error: errorMessage 
+    });
   }
 }
