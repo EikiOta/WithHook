@@ -44,7 +44,7 @@ export async function POST() {
       }
 
       // 1. ユーザーアカウントを復旧
-      const recoveredUser = await prisma.user.update({
+      await prisma.user.update({
         where: { user_id: userId },
         data: { deleted_at: null }
       });

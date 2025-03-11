@@ -52,7 +52,8 @@ export async function middleware(req: NextRequest) {
     }
 
     return NextResponse.next();
-  } catch (err) {
+  } catch {
+    // エラーパラメータを完全に省略
     return NextResponse.next();
   }
 }

@@ -6,7 +6,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 export default function DeletedUserCheck() {
-  const { data: session, status } = useSession();
+  // session 変数は現在使用していないがステータスのために必要
+  const { status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const hasCheckedRef = useRef(false);

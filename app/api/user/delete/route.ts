@@ -31,7 +31,7 @@ export async function POST() {
       const now = new Date();
       
       // 1. ユーザーの論理削除
-      const updatedUser = await prisma.user.update({
+      await prisma.user.update({
         where: { user_id: userId },
         data: { deleted_at: now }
       });
