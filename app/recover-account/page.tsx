@@ -33,14 +33,15 @@ export default function RecoverAccountPage() {
       });
       
       if (res.ok) {
-        const data = await res.json();
+        // data変数を使用せずに直接成功状態を設定
         setSuccess(true);
         toast.success("アカウントを復旧しました！");
       } else {
-        const data = await res.json();
-        toast.error(data.error || "アカウント復旧に失敗しました");
+        const errorData = await res.json();
+        toast.error(errorData.error || "アカウント復旧に失敗しました");
       }
-    } catch (error) {
+    } catch {
+      // エラー変数を使用しない形に修正（アンダースコアで未使用を明示）
       toast.error("アカウント復旧処理中にエラーが発生しました");
     } finally {
       setIsRecovering(false);

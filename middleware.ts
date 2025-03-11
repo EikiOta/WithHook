@@ -3,10 +3,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-// ミドルウェアはEdge Runtimeで実行されるため、
-// このままではPrismaやAPIを直接使用できない
-// これらはNode.jsランタイムでのみ動作する
-
 export async function middleware(req: NextRequest) {
   try {
     // トークン取得試行
@@ -41,19 +37,34 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(new URL("/", req.url));
     }
 
-    // ログイン済みの場合の処理
-    // 注意: Edge Runtimeではデータベースに直接アクセスできないため、
-    // 削除済みアカウントの検出は再度クライアントサイドで行う必要がある
-    
-    // 削除状態の情報がトークンに含まれていれば使用
+    // ログイン済みの場合、削除状態をチェック
     if (token && pathname !== "/recover-account") {
-      // ここでは単にNextResponseを返し、
-      // クライアントサイドのDeletedUserCheckに任せる
+      try {
+        // Edge RuntimeからサーバーサイドAPIを呼び出す
+        const baseUrl = req.nextUrl.origin;
+        const checkResponse = await fetch(`${baseUrl}/api/user/delete/check-deleted`, {
+          headers: {
+            cookie: req.headers.get('cookie') || '',
+          }
+        });
+        
+        if (checkResponse.ok) {
+          const { deleted } = await checkResponse.json();
+          
+          // 削除済みアカウントの場合、直接復旧ページへリダイレクト
+          if (deleted) {
+            return NextResponse.redirect(new URL("/recover-account", req.url));
+          }
+        }
+      } catch (error) {
+        // API呼び出しエラー時はログを記録するだけで処理を続行
+        console.error("削除状態チェックエラー:", error);
+      }
     }
 
     return NextResponse.next();
-  } catch {
-    // エラーパラメータを完全に省略
+  } catch (error) {
+    console.error("Middleware error:", error);
     return NextResponse.next();
   }
 }

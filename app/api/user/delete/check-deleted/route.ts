@@ -34,7 +34,14 @@ export async function GET() {
 
       // 削除済みかどうかを返す
       const isDeleted = user.deleted_at !== null;
-      return NextResponse.json({ deleted: isDeleted });
+      return NextResponse.json({ deleted: isDeleted }, {
+        headers: {
+          // CORSヘッダーを追加して同一オリジンからのアクセスを許可
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        }
+      });
     } catch (error) {
       await prisma.$disconnect();
       throw error;
