@@ -1,15 +1,10 @@
-// auth.ts の修正
+// auth.ts
 import NextAuth from "next-auth";
 import GithubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
-
-// アプリの環境変数確認
-if (!process.env.NEXTAUTH_SECRET) {
-  console.warn("警告: NEXTAUTH_SECRET環境変数が設定されていません");
-}
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
@@ -26,10 +21,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30日
-  },
-  pages: {
-    signIn: '/login',
-    error: '/login',
   },
   callbacks: {
     async signIn({ user, account }) {
@@ -91,31 +82,31 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         return token;
       } catch (error) {
         console.error("JWT処理中エラー:", error);
-        // エラー時でも有効なトークンを返す
         return { ...token };
       }
     },
     
     async session({ session, token }) {
       try {
-        if (!session) session = { user: {}, expires: "" };
-        if (!session.user) session.user = {};
-        
-        if (token) {
-          session.user.id = token.sub || "";
-          session.user.name = token.name || "";
-          session.user.email = token.email || "";
-          session.user.image = token.picture || "";
+        // 既存のセッションとユーザーオブジェクトを変更
+        if (session?.user && token) {
+          // 新しいセッションオブジェクトを作成して返す
+          return {
+            ...session,
+            user: {
+              ...session.user,
+              id: token.sub || "",
+              name: token.name || "",
+              email: token.email || "",
+              image: token.picture || ""
+            }
+          };
         }
         
         return session;
       } catch (error) {
         console.error("セッション処理中エラー:", error);
-        // 最小限のセッション情報を返す
-        return {
-          user: { id: token?.sub || "" },
-          expires: session?.expires || ""
-        };
+        return session;
       }
     }
   }

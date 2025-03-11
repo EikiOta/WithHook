@@ -1,4 +1,4 @@
-// app/manage/page.tsx の完全修正版
+// app/manage/page.tsx
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import ManageTabs from "./ManageTabs";
@@ -18,7 +18,6 @@ export default async function ManagePage() {
     }
     
     const userId = session.user.id;
-    console.log("Managing content for user ID:", userId);
     
     // データベース接続処理
     try {
@@ -30,7 +29,6 @@ export default async function ManagePage() {
       });
       
       if (!userExists) {
-        console.error(`User not found in database: ${userId}`);
         await prisma.$disconnect();
         return (
           <div className="p-4">
@@ -99,9 +97,6 @@ export default async function ManagePage() {
           <p className="text-sm mt-2 text-red-600">
             {dbError instanceof Error ? dbError.message : String(dbError)}
           </p>
-          <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
-            {dbError instanceof Error && dbError.stack ? dbError.stack : 'スタックトレースなし'}
-          </pre>
         </div>
       );
     }
@@ -111,12 +106,6 @@ export default async function ManagePage() {
       <div className="p-4">
         <h1 className="text-2xl font-bold mb-4">認証エラー</h1>
         <p>認証情報の取得中にエラーが発生しました。ログインし直してください。</p>
-        <button
-          onClick={() => redirect("/login")}
-          className="px-4 py-2 bg-blue-500 text-white rounded mt-4"
-        >
-          ログインページへ
-        </button>
       </div>
     );
   }
