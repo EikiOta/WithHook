@@ -6,7 +6,8 @@ import prisma from "@/lib/prisma";
 // Node.js Runtime で実行するよう指定
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
+// requestパラメータを削除（これが未使用変数エラーの原因）
+export async function GET() {
   try {
     const session = await auth();
     console.log("Check-deleted API called, session:", session?.user ? "Exists (id: " + session.user.id + ")" : "None");
