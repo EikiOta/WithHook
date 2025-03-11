@@ -1,11 +1,11 @@
 // lib/prisma.ts
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
 // PrismaClientのオプション
-const prismaClientOptions = {
+const prismaClientOptions: Prisma.PrismaClientOptions = {
   log: process.env.NODE_ENV === "development" 
-    ? ["query", "error", "warn"] 
-    : ["error"],
+    ? ['query', 'error', 'warn'] as Prisma.LogLevel[]
+    : ['error'] as Prisma.LogLevel[],
     
   // 開発環境では接続タイムアウトを設定
   ...(process.env.NODE_ENV === "development" && {
