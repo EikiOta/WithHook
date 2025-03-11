@@ -1,11 +1,9 @@
-// app/api/user/delete/route.ts - 完全に修正したバージョン
+// app/api/user/delete/route.ts
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { PrismaClient } from "@prisma/client";
 
 export async function POST() {
-  console.log("===== DELETE USER API CALLED =====");
-  
   try {
     // セッション情報を取得
     const session = await auth();
@@ -14,12 +12,9 @@ export async function POST() {
     }
 
     const userId = session.user.id;
-    console.log(`Deleting user with ID: ${userId}`);
     
-    // 新しいPrismaインスタンスを作成（グローバルインスタンスを避ける）
-    const prisma = new PrismaClient({
-      log: ['error', 'warn']
-    });
+    // 新しいPrismaインスタンスを作成
+    const prisma = new PrismaClient();
     
     try {
       // ユーザー検索
@@ -31,24 +26,18 @@ export async function POST() {
         await prisma.$disconnect();
         return NextResponse.json({ error: "User not found" }, { status: 404 });
       }
-
-      console.log(`Found user: ${user.user_id}`);
       
       // 削除タイムスタンプ
       const now = new Date();
       
-      // 段階的に処理を実行（トランザクションを避ける）
       // 1. ユーザーの論理削除
-      console.log("Step 1: Updating user...");
       const updatedUser = await prisma.user.update({
         where: { user_id: userId },
         data: { deleted_at: now }
       });
-      console.log("User marked as deleted");
       
       // 2. 関連レコードも論理削除
-      // アクティブな意味を取得して更新
-      console.log("Step 2: Updating meanings...");
+      // 意味を更新
       const activeMeanings = await prisma.meaning.findMany({
         where: { 
           user_id: userId,
@@ -67,10 +56,8 @@ export async function POST() {
         });
         meaningCount++;
       }
-      console.log(`Updated ${meaningCount} meanings`);
       
       // 記憶hooksを更新
-      console.log("Step 3: Updating memory hooks...");
       const activeMemoryHooks = await prisma.memoryHook.findMany({
         where: { 
           user_id: userId,
@@ -89,10 +76,8 @@ export async function POST() {
         });
         hookCount++;
       }
-      console.log(`Updated ${hookCount} memory hooks`);
       
       // UserWordを更新
-      console.log("Step 4: Updating user words...");
       const wordUpdate = await prisma.userWord.updateMany({
         where: { 
           user_id: userId,
@@ -100,7 +85,6 @@ export async function POST() {
         },
         data: { deleted_at: now }
       });
-      console.log(`Updated ${wordUpdate.count} user words`);
       
       // 接続を閉じる
       await prisma.$disconnect();
@@ -119,14 +103,12 @@ export async function POST() {
       // エラー時は接続を確実に閉じる
       await prisma.$disconnect();
       
-      console.error("Database error:", dbError);
       return NextResponse.json({ 
         error: "Database operation failed",
         message: dbError instanceof Error ? dbError.message : String(dbError)
       }, { status: 500 });
     }
   } catch (error) {
-    console.error("General error:", error);
     return NextResponse.json({ 
       error: "Account deletion failed",
       message: error instanceof Error ? error.message : String(error)

@@ -3,18 +3,17 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+// ミドルウェアはEdge Runtimeで実行されるため、
+// このままではPrismaやAPIを直接使用できない
+// これらはNode.jsランタイムでのみ動作する
+
 export async function middleware(req: NextRequest) {
   try {
     // トークン取得試行
-    let token;
-    try {
-      token = await getToken({ 
-        req, 
-        secret: process.env.NEXTAUTH_SECRET
-      });
-    } catch (tokenError) {
-      console.error("トークン取得エラー:", tokenError);
-    }
+    const token = await getToken({ 
+      req, 
+      secret: process.env.NEXTAUTH_SECRET
+    });
 
     const { pathname } = req.nextUrl;
     
@@ -27,7 +26,7 @@ export async function middleware(req: NextRequest) {
       return NextResponse.next();
     }
 
-    // 復旧ページへのアクセスを許可（ログイン済みでも許可する）
+    // 復旧ページへのアクセスを許可
     if (pathname === "/recover-account") {
       return NextResponse.next();
     }
@@ -42,27 +41,18 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(new URL("/", req.url));
     }
 
-    // ログイン済みの場合、削除済みアカウントかチェック（ローカルストレージも確認）
+    // ログイン済みの場合の処理
+    // 注意: Edge Runtimeではデータベースに直接アクセスできないため、
+    // 削除済みアカウントの検出は再度クライアントサイドで行う必要がある
+    
+    // 削除状態の情報がトークンに含まれていれば使用
     if (token && pathname !== "/recover-account") {
-      try {
-        // 削除状態チェックAPIをフェッチ
-        const response = await fetch(new URL("/api/user/delete/check-deleted", req.url));
-        const data = await response.json();
-        
-        // 削除済みなら復旧ページへリダイレクト
-        if (data.deleted === true) {
-          console.log("削除済みアカウントを検出: 復旧ページへリダイレクト");
-          return NextResponse.redirect(new URL("/recover-account", req.url));
-        }
-      } catch (error) {
-        console.error("削除状態チェックエラー:", error);
-        // エラー時はセーフティのため継続
-      }
+      // ここでは単にNextResponseを返し、
+      // クライアントサイドのDeletedUserCheckに任せる
     }
 
     return NextResponse.next();
   } catch (err) {
-    console.error("ミドルウェアエラー:", err);
     return NextResponse.next();
   }
 }

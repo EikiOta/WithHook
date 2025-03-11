@@ -18,7 +18,6 @@ export default function RecoverAccountPage() {
       return () => clearTimeout(timer);
     } else if (success && countdown === 0) {
       // カウントダウン完了後にトップページへリダイレクト
-      console.log("Redirecting to home page...");
       window.location.replace("/");
     }
   }, [success, countdown]);
@@ -26,36 +25,29 @@ export default function RecoverAccountPage() {
   const handleRecoverAccount = async () => {
     setIsRecovering(true);
     try {
-      console.log("Sending recovery request...");
       const res = await fetch("/api/user/recover", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
       });
-
-      console.log("Recovery API response status:", res.status);
       
       if (res.ok) {
         const data = await res.json();
-        console.log("Recovery API response:", data);
         setSuccess(true);
         toast.success("アカウントを復旧しました！");
-        // カウントダウン開始（useEffectでリダイレクト）
       } else {
         const data = await res.json();
-        console.error("Recovery API error:", data);
         toast.error(data.error || "アカウント復旧に失敗しました");
       }
     } catch (error) {
-      console.error("復旧エラー:", error);
       toast.error("アカウント復旧処理中にエラーが発生しました");
     } finally {
       setIsRecovering(false);
     }
   };
 
-  const handleCancelRecover = async () => {
+  const handleCancelRecover = () => {
     // ログアウトして復旧せずにログイン画面に戻る
     signOut({ callbackUrl: "/login" });
   };
