@@ -1,46 +1,54 @@
 // app/api/user/delete/check-deleted/route.ts
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import prisma from "@/lib/prisma";
+import { PrismaClient } from "@prisma/client";
 
 // Node.js Runtime で実行するよう指定
 export const runtime = "nodejs";
 
-// requestパラメータを削除（これが未使用変数エラーの原因）
 export async function GET() {
+  console.log("===== CHECK DELETED API CALLED =====");
+  
   try {
+    // セッション情報を取得
     const session = await auth();
-    console.log("Check-deleted API called, session:", session?.user ? "Exists (id: " + session.user.id + ")" : "None");
+    console.log("Check-deleted API called, session:", 
+                session?.user ? `Exists (id: ${session.user.id})` : "None");
     
     if (!session?.user) {
-      // 未ログインの場合は削除状態の判定不要として false を返す
-      console.log("No session, returning deleted=false");
+      console.log("No authenticated user found");
       return NextResponse.json({ deleted: false });
     }
 
-    // session.user.idは内部user_idとして扱う
     const userId = session.user.id;
-    console.log("User ID from session:", userId);
+    console.log(`Checking deleted status for user ID: ${userId}`);
     
-    // user_idでユーザー検索
-    const user = await prisma.user.findUnique({
-      where: { user_id: userId },
-    });
-
-    if (!user) {
-      console.log("User not found with user_id:", userId);
-      return NextResponse.json({ deleted: false });
-    }
-
-    console.log(`User found: user_id=${user.user_id}, deleted_at=${user.deleted_at?.toISOString() || 'null'}`);
-
-    if (user.deleted_at) {
-      console.log("User is deleted, returning deleted=true");
-      return NextResponse.json({ deleted: true });
-    }
+    // 新しいPrismaインスタンスを使用（問題を避けるため）
+    const prisma = new PrismaClient();
     
-    console.log("User not deleted, returning deleted=false");
-    return NextResponse.json({ deleted: false });
+    try {
+      // ユーザー検索
+      const user = await prisma.user.findUnique({
+        where: { user_id: userId },
+      });
+
+      await prisma.$disconnect();
+
+      if (!user) {
+        console.log(`User not found with user_id: ${userId}`);
+        return NextResponse.json({ deleted: false });
+      }
+
+      console.log(`User found: user_id=${user.user_id}, deleted_at=${user.deleted_at?.toISOString() || 'null'}`);
+
+      // 削除済みかどうかを返す
+      const isDeleted = user.deleted_at !== null;
+      console.log(`User is ${isDeleted ? 'deleted' : 'active'}`);
+      return NextResponse.json({ deleted: isDeleted });
+    } catch (error) {
+      await prisma.$disconnect();
+      throw error;
+    }
   } catch (error) {
     console.error("Error in check-deleted API:", error);
     
@@ -49,18 +57,9 @@ export async function GET() {
       ? error.message 
       : "Unknown error";
     
-    // 確実にJSONレスポンスを返す
-    return new NextResponse(
-      JSON.stringify({ 
-        deleted: false, 
-        error: errorMessage 
-      }), 
-      { 
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    return NextResponse.json({ 
+      deleted: false, 
+      error: errorMessage 
+    }, { status: 500 });
   }
 }

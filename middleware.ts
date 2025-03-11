@@ -27,7 +27,7 @@ export async function middleware(req: NextRequest) {
       return NextResponse.next();
     }
 
-    // 復旧ページへのアクセスを許可
+    // 復旧ページへのアクセスを許可（ログイン済みでも許可する）
     if (pathname === "/recover-account") {
       return NextResponse.next();
     }
@@ -40,6 +40,24 @@ export async function middleware(req: NextRequest) {
     // ログイン済みで/loginにアクセス中ならトップへリダイレクト
     if (token && pathname === "/login") {
       return NextResponse.redirect(new URL("/", req.url));
+    }
+
+    // ログイン済みの場合、削除済みアカウントかチェック（ローカルストレージも確認）
+    if (token && pathname !== "/recover-account") {
+      try {
+        // 削除状態チェックAPIをフェッチ
+        const response = await fetch(new URL("/api/user/delete/check-deleted", req.url));
+        const data = await response.json();
+        
+        // 削除済みなら復旧ページへリダイレクト
+        if (data.deleted === true) {
+          console.log("削除済みアカウントを検出: 復旧ページへリダイレクト");
+          return NextResponse.redirect(new URL("/recover-account", req.url));
+        }
+      } catch (error) {
+        console.error("削除状態チェックエラー:", error);
+        // エラー時はセーフティのため継続
+      }
     }
 
     return NextResponse.next();
